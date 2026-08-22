@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.3](https://github.com/shenjingnan/dsh-work/compare/v0.1.2...v0.1.3) - 2026-08-22
+
+### Added
+
+- 支持 macOS 26 Liquid Glass 应用图标 ([#13](https://github.com/shenjingnan/dsh-work/pull/13))
+
+### Fixed
+
+- *(build)* 清除 dsh 依赖的 musl/linux-arm64 原生变体修复 AppImage 打包 ([#16](https://github.com/shenjingnan/dsh-work/pull/16))
+
+### Other
+
+- *(readme)* 新增英文版 README 并同步桌面应用现状 ([#15](https://github.com/shenjingnan/dsh-work/pull/15))
+
 ## [0.1.2](https://github.com/shenjingnan/dsh-work/compare/v0.1.1...v0.1.2) - 2026-08-22
 
 ### Fixed
