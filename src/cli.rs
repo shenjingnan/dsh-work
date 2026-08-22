@@ -221,7 +221,7 @@ mod tests {
 
     #[test]
     fn test_cli_parse_greet() {
-        let cli = Cli::try_parse_from(&["test", "greet", "--name", "World"]).unwrap();
+        let cli = Cli::try_parse_from(["test", "greet", "--name", "World"]).unwrap();
         match cli.command.unwrap() {
             Commands::Greet { name, count } => {
                 assert_eq!(name, "World");
@@ -233,7 +233,7 @@ mod tests {
 
     #[test]
     fn test_cli_parse_greet_with_count() {
-        let cli = Cli::try_parse_from(&["test", "greet", "-n", "Test", "-c", "3"]).unwrap();
+        let cli = Cli::try_parse_from(["test", "greet", "-n", "Test", "-c", "3"]).unwrap();
         match cli.command.unwrap() {
             Commands::Greet { name, count } => {
                 assert_eq!(name, "Test");
@@ -245,7 +245,7 @@ mod tests {
 
     #[test]
     fn test_cli_parse_config() {
-        let cli = Cli::try_parse_from(&["test", "config"]).unwrap();
+        let cli = Cli::try_parse_from(["test", "config"]).unwrap();
         assert!(matches!(cli.command.unwrap(), Commands::Config));
     }
 }
