@@ -1,10 +1,10 @@
-# CLAUDE.md - ai-rust-starter
+# CLAUDE.md - dsh-work
 
 本文档为 Claude Code 提供项目上下文和开发规范。
 
 ## 项目概述
 
-**ai-rust-starter** 是一个 Rust 项目快速启动模板，提供开箱即用的工程化配置和通用工具模块。
+**dsh-work** 是一个 Rust 编写的命令行工具，基于 clap + tokio，提供配置管理、双层日志、日期时间工具等通用模块。
 
 ## 技术栈
 
@@ -123,12 +123,11 @@ cargo tarpaulin                     # 生成覆盖率报告
 - `test` - 测试相关
 - `chore` - 构建/工具
 
-## 模板使用
+## 发布
 
-### 开始新项目
+本项目通过 `cargo publish` 发布到 crates.io，仓库中配置了 release-plz（版本管理）和 cargo-dist（二进制分发）：
 
-1. 克隆此仓库或 fork
-2. 全局搜索替换 `ai-rust-starter` 为你的项目名
-3. 搜索替换 `.ai-rust-starter` 为你的配置目录名
-4. 修改 `Cargo.toml` 中的项目元信息
-5. 开始编写你的业务代码
+1. 更新 `Cargo.toml` 中的 `version`
+2. 运行完整检查：`cargo fmt --check && cargo clippy -- -D warnings && cargo test`
+3. 预检打包内容：`cargo publish --dry-run`
+4. 发布：`cargo publish`（需先 `cargo login`）
