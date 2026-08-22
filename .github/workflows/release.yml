@@ -133,7 +133,11 @@ jobs:
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          BUNDLE="src-tauri/target/${{ matrix.triple }}/release/bundle"
+          # 注意是仓库根的 target/ 而非 src-tauri/target/：根 Cargo.toml 定义了
+          # workspace（members 含 src-tauri），cargo 把全部产物统一放在
+          # workspace 根的 target/（v0.1.5 曾因写成 src-tauri/target/ 导致
+          # macOS 双架构 cp 找不到产物而失败）
+          BUNDLE="target/${{ matrix.triple }}/release/bundle"
           mkdir -p staged
           cp "$BUNDLE"/dmg/*.dmg staged/
           cp "$BUNDLE"/macos/*.app.tar.gz staged/
