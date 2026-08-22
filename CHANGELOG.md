@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.6](https://github.com/shenjingnan/dsh-work/compare/v0.1.5...v0.1.6) - 2026-08-22
+
+### Fixed
+
+- *(desktop)* Windows 下去除 dsh 入口 canonicalize 的 \?\ 前缀 ([#32](https://github.com/shenjingnan/dsh-work/pull/32))
+- *(release)* workspace 共享版本根治版本漂移，并加 tag 版本守卫 ([#30](https://github.com/shenjingnan/dsh-work/pull/30))
+
+### Other
+
+- *(lint)* 修复 dsh-work 存量 clippy 错误 ([#33](https://github.com/shenjingnan/dsh-work/pull/33))
+
 ## [0.1.5](https://github.com/shenjingnan/dsh-work/compare/v0.1.4...v0.1.5) - 2026-08-22
 
 ### Added
