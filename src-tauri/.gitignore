@@ -3,4 +3,7 @@
 /gen/apple
 # 打包时注入的运行时资源（由 scripts/fetch-*.sh 生成）
 /binaries/
-/resources/
+/resources/*
+# 例外：Liquid Glass 图标产物（由 actool 从 icons/AppIcon.icon 编译，需提交以保证 CI 无需 Xcode 26）
+!/resources/Assets.car
+!/resources/assetcatalog_generated_info.plist

@@ -21,7 +21,10 @@
       "resources/pnpm": "pnpm/"
     },
     "macOS": {
-      "minimumSystemVersion": "13.0"
+      "minimumSystemVersion": "13.0",
+      "files": {
+        "Resources/Assets.car": "resources/Assets.car"
+      }
     },
     "icon": [
       "icons/32x32.png",
