@@ -971,6 +971,7 @@ version = "0.1.5"
 dependencies = [
  "anyhow",
  "ctrlc",
+ "dunce",
  "serde",
  "serde_json",
  "tauri",
