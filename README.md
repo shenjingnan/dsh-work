@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/public/logo.jpg" alt="dsh-work Logo" width="300" />
+  <img src="docs/public/logo.png" alt="dsh-work Logo" width="300" />
 
   <p>
     <a href="https://github.com/shenjingnan/dsh-work/releases"><img src="https://img.shields.io/github/v/release/shenjingnan/dsh-work" alt="GitHub Release" /></a>
