@@ -12,19 +12,27 @@ permissions:
 
 jobs:
   release:
-    name: Release (${{ matrix.platform }})
+    # 用 triple 命名：macOS 双架构同为 macos-latest runner，platform 无法区分
+    name: Release (${{ matrix.triple }})
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: macos-14
+          # macOS 双架构都在 macos-latest（Apple Silicon）上构建：arm64 原生、
+          # x64 交叉编译（下方 rustup target add）。macos-13（Intel runner）
+          # 已于 2025-12-04 被 GitHub 退役，不可用。
+          - platform: macos-latest
             triple: aarch64-apple-darwin
-          - platform: macos-13
+            args: '--target aarch64-apple-darwin'
+          - platform: macos-latest
             triple: x86_64-apple-darwin
+            args: '--target x86_64-apple-darwin'
           - platform: windows-latest
             triple: x86_64-pc-windows-msvc
+            args: ''
           - platform: ubuntu-22.04
             triple: x86_64-unknown-linux-gnu
+            args: ''
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v7
@@ -39,6 +47,12 @@ jobs:
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@1.97.1
+
+      - name: Install macOS cross-compile targets
+        # x86_64-apple-darwin 条目在 arm64 runner 上交叉编译，需显式安装目标；
+        # aarch64 一并安装保证两个矩阵条目行为一致
+        if: runner.os == 'macOS'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
       - name: Install Tauri Linux dependencies
         if: runner.os == 'Linux'
@@ -63,3 +77,4 @@ jobs:
           releaseName: 'dsh-work ${{ env.TAG_NAME }}'
           releaseDraft: true
           prerelease: true
+          args: ${{ matrix.args }}
