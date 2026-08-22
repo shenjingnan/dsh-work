@@ -14,35 +14,66 @@
       justify-content: center;
       gap: 24px;
       font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
-      background: linear-gradient(160deg, #0a1a3f 0%, #0d47c8 60%, #1e90ff 100%);
-      color: #fff;
+      background: #fff;
+      color: #1f2329;
       user-select: none;
     }
-    img.logo { width: 180px; border-radius: 24px; box-shadow: 0 8px 32px rgba(0,0,0,.35); }
+    /* Windows：undecorated 且已关 DWM shadow，补一圈 CSS 边框 */
+    body.windows { border: 1px solid #d9d9d9; }
+    img.logo { width: 180px; border-radius: 24px; box-shadow: 0 8px 32px rgba(13,71,200,.25); }
+
+    /* 自定义标题栏（仅非 macOS 显示；macOS 由系统红绿灯 + 透明标题栏承担） */
+    #titlebar {
+      position: fixed; top: 0; left: 0; right: 0; height: 32px; z-index: 10;
+      display: flex; align-items: stretch; justify-content: flex-end;
+      border-bottom: 1px solid rgba(0,0,0,.08);
+    }
+    #titlebar button {
+      height: 100%; width: 40px; padding: 0; border: none; border-radius: 0;
+      background: transparent; color: #5f6368; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s, color .15s;
+    }
+    #titlebar button:hover { background: rgba(0,0,0,.06); color: #202124; }
+    #titlebar button.close:hover { background: #e81123; color: #fff; }
+
     .spinner {
       width: 36px; height: 36px;
-      border: 3px solid rgba(255,255,255,.25);
-      border-top-color: #fff;
+      border: 3px solid rgba(13,71,200,.15);
+      border-top-color: #0d47c8;
       border-radius: 50%;
       animation: spin 0.9s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    #status { font-size: 14px; opacity: .9; }
+    #status { font-size: 14px; color: #5f6368; }
     #error { display: none; flex-direction: column; align-items: center; gap: 16px; }
     #error pre {
       max-width: 70vw; max-height: 30vh; overflow: auto;
-      background: rgba(0,0,0,.35); border-radius: 8px;
+      background: rgba(0,0,0,.05); border-radius: 8px;
       padding: 12px; font-size: 12px; white-space: pre-wrap;
     }
-    button {
+    #retry {
       padding: 8px 28px; font-size: 14px; border: none; border-radius: 8px;
-      background: #fff; color: #0d47c8; cursor: pointer; font-weight: 600;
+      background: #0d47c8; color: #fff; cursor: pointer; font-weight: 600;
     }
-    button:hover { opacity: .85; }
+    #retry:hover { opacity: .85; }
     .hidden { display: none !important; }
   </style>
 </head>
 <body>
+  <!-- 自定义标题栏：整条为拖拽区，右侧窗口三键；macOS 下保持隐藏（系统红绿灯 + 原生拖拽区） -->
+  <div id="titlebar" data-tauri-drag-region class="hidden">
+    <button id="btn-min" type="button" aria-label="最小化" title="最小化">
+      <svg width="12" height="12" viewBox="0 0 12 12"><line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.2"/></svg>
+    </button>
+    <button id="btn-max" type="button" aria-label="最大化" title="最大化">
+      <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+    </button>
+    <button id="btn-close" type="button" class="close" aria-label="关闭" title="关闭">
+      <svg width="12" height="12" viewBox="0 0 12 12"><line x1="1.5" y1="1.5" x2="10.5" y2="10.5" stroke="currentColor" stroke-width="1.2"/><line x1="10.5" y1="1.5" x2="1.5" y2="10.5" stroke="currentColor" stroke-width="1.2"/></svg>
+    </button>
+  </div>
+
   <img class="logo" src="logo.png" alt="dsh-work" />
   <div id="loading">
     <div class="spinner"></div>
@@ -55,13 +86,31 @@
   </div>
 
   <script>
-    // 阶段 2 接线：轮询 server_url，就绪后跳转；失败显示错误页
     const { invoke } = window.__TAURI__?.core ?? {};
     const statusEl = document.getElementById('status');
     const loadingEl = document.getElementById('loading');
     const errorEl = document.getElementById('error');
     const detailEl = document.getElementById('error-detail');
 
+    // 平台相关：macOS 由系统红绿灯 + 透明标题栏承担拖拽，隐藏页内标题栏；
+    // Windows/Linux 显示页内标题栏并接线窗口三键。
+    const ua = navigator.userAgent;
+    if (!ua.includes('Macintosh')) {
+      document.getElementById('titlebar').classList.remove('hidden');
+      if (ua.includes('Windows')) document.body.classList.add('windows');
+      const win = window.__TAURI__?.window?.getCurrentWindow();
+      if (win) {
+        document.getElementById('btn-min').addEventListener('click', () => win.minimize());
+        document.getElementById('btn-max').addEventListener('click', () => win.toggleMaximize());
+        document.getElementById('btn-close').addEventListener('click', () => win.close());
+        // 双击拖拽区切换最大化，贴近原生标题栏行为
+        document.getElementById('titlebar').addEventListener('dblclick', (e) => {
+          if (e.target.id === 'titlebar') win.toggleMaximize();
+        });
+      }
+    }
+
+    // 阶段 2 接线：轮询 server_url，就绪后跳转；失败显示错误页
     function showError(detail) {
       loadingEl.classList.add('hidden');
       statusEl.classList.add('hidden');
