@@ -40,9 +40,8 @@ jobs:
           - platform: windows-latest
             triple: x86_64-pc-windows-msvc
             args: ''
-          # ubuntu-22.04 镜像 2026-09-17 起废弃（actions/runner-images#14254），
-          # 迁移 24.04 需重新验证 AppImage 打包（fuse2 缺失问题），单独处理
-          - platform: ubuntu-22.04
+          # ubuntu-22.04 镜像 2026-09-17 起废弃（actions/runner-images#14254），已迁 24.04
+          - platform: ubuntu-24.04
             triple: x86_64-unknown-linux-gnu
             args: ''
     runs-on: ${{ matrix.platform }}
@@ -70,10 +69,12 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Install Tauri Linux dependencies
+        # 24.04（noble）移除了 libappindicator3-dev，改用 Tauri v2 官方
+        # prerequisites 的 ayatana 维护分支；webkit 用的是 4.1 系，24.04 仍提供
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
 
       - name: Fetch bundled dsh
         shell: bash
