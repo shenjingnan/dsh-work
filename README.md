@@ -1,15 +1,31 @@
-# dsh-work
+<div align="center">
+  <img src="docs/public/logo.png" alt="dsh-work Logo" width="300" />
 
-dsh-work 命令行工具。
+  <p>
+    <a href="https://github.com/shenjingnan/dsh-work/releases"><img src="https://img.shields.io/github/v/release/shenjingnan/dsh-work" alt="GitHub Release" /></a>
+    <a href="https://github.com/shenjingnan/dsh-work/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/shenjingnan/dsh-work/ci.yml?branch=main&label=CI" alt="GitHub Actions CI 状态" /></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue" alt="License: MIT" /></a>
+    <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-1.85%2B-dea584?logo=rust" alt="Rust 1.85+" /></a>
+  </p>
+</div>
 
-## 特性
+**dsh-work** 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）的桌面应用：下载安装后双击即可使用，无需自己准备 Node.js 环境。
+
+> 🚧 项目处于早期开发阶段，当前仓库为 Rust CLI 骨架，正在向桌面应用形态演进。
+
+## 目标
+
+- **开箱即用** — 安装包内置 Node.js 运行时与 dsh，用户无需安装任何依赖
+- **桌面应用形态** — 基于 Tauri，单窗口内嵌 dsh Web UI，支持 macOS / Windows / Linux
+- **本地优先** — dsh 服务在本机回环地址运行，数据不出设备
+
+## 当前功能（CLI 骨架）
 
 - **CLI 骨架** — 基于 clap 的命令行参数解析，支持子命令和 Shell 补全生成
 - **异步运行时** — 集成 tokio，开箱即用的 async/await 支持
 - **配置管理** — TOML 格式的配置文件读写，支持 `${env.VAR}` 环境变量引用
 - **双层日志** — 基于 tracing 的日志系统，同时输出到文件和 stderr
 - **日期时间工具** — 基于 chrono 的常用时间格式转换函数
-- **Shell 补全** — 支持 bash / zsh / fish / powershell 自动补全
 
 ## 安装
 
@@ -34,6 +50,7 @@ cargo clippy -- -D warnings
 ```
 ├── Cargo.toml           # 项目配置和依赖
 ├── rust-toolchain.toml  # Rust 工具链版本（1.85）
+├── docs/public/         # Logo、图标等品牌资源
 ├── src/
 │   ├── main.rs          # 入口文件
 │   ├── lib.rs           # 库入口 + 测试工具
@@ -47,25 +64,6 @@ cargo clippy -- -D warnings
 ├── .github/workflows/   # CI/CD
 └── .githooks/           # Git hooks
 ```
-
-## 开发指南
-
-1. 修改 `Cargo.toml` 中的项目元信息（version, description）
-2. 按需调整依赖（`Cargo.toml` 中的可选依赖已注释说明）
-3. 在 `src/cli.rs` 中定义你的命令
-4. 开始编写业务代码
-
-## 依赖说明
-
-| 分类 | Crate | 用途 |
-|------|-------|------|
-| 核心 | clap | CLI 参数解析 |
-| 核心 | tokio | 异步运行时 |
-| 核心 | serde / serde_json / toml | 序列化 |
-| 核心 | chrono | 日期时间处理 |
-| 核心 | tracing / tracing-subscriber | 日志 |
-| 核心 | thiserror / anyhow | 错误处理 |
-| 可选 | reqwest | HTTP 客户端（按需引入） |
 
 ## 许可
 
