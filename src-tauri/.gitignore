@@ -1,0 +1,6 @@
+# Tauri 生成物
+/gen/schemas
+/gen/apple
+# 打包时注入的运行时资源（由 scripts/fetch-*.sh 生成）
+/binaries/
+/resources/

@@ -1,0 +1,21 @@
+[package]
+name = "dsh-work-app"
+version = "0.1.0"
+description = "dsh-work 桌面应用（DeepSeek Harness 桌面壳）"
+edition = "2024"
+license = "MIT"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-single-instance = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[features]
+# 自定义 feature，用于 tauri 的 macOS 私有 API 等场景（暂未使用）
+custom-protocol = ["tauri/custom-protocol"]
