@@ -22,7 +22,11 @@
 
 **dsh-work** 是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（dsh）的桌面应用：下载安装后双击即可使用，无需自己准备 Node.js 环境。
 
-> 🚧 项目处于早期开发阶段，仓库同时包含 Tauri 2 桌面应用与 Rust CLI 骨架。
+> 🚧 项目处于早期开发阶段。
+
+<div align="center">
+  <img src="docs/public/screenshot.png" alt="dsh-work 桌面应用截图" width="800" />
+</div>
 
 <details>
 
@@ -49,57 +53,9 @@ CLI 也已发布到 crates.io：
 cargo install dsh-work
 ```
 
-## 工作原理
+## 贡献
 
-桌面应用把 dsh 运行所需的一切打包进安装包，用户完全不需要接触 Node.js：
-
-1. **内置 dsh** — `scripts/fetch-dsh.sh` 按 `dsh-version.txt` 锁定的版本把 `@deepseek-ai/dsh` 预装到 `src-tauri/resources/dsh`，作为 Tauri resources 进入安装包
-2. **内置运行时** — `scripts/fetch-runtime.sh` 按平台拉取 Node.js 二进制（sidecar）与 pnpm 打入安装包
-3. **启动流程** — 应用拉起内置 Node 运行 `dsh web`（监听回环地址端口），等待服务就绪后在单窗口中加载本地 Web UI
-4. **生命周期** — 关闭窗口或收到 SIGTERM/SIGINT 时自动清理 dsh 子进程
-
-## 快速开始（CLI）
-
-```bash
-dsh-work config                  # 显示配置
-dsh-work greet --name World      # 向用户问好（演示命令参数用法）
-dsh-work completion bash         # 生成 Shell 补全（bash/zsh/fish/powershell/elvish）
-```
-
-## 开发
-
-```bash
-# CLI
-cargo run -- config
-cargo test                            # 运行测试
-cargo fmt --check && cargo clippy -- -D warnings && cargo test   # 完整检查
-
-# 桌面应用
-./scripts/fetch-dsh.sh                # 拉取内置 dsh
-./scripts/fetch-runtime.sh <triple>   # 拉取 Node 运行时 + pnpm（如 aarch64-apple-darwin）
-```
-
-## 项目结构
-
-```
-├── Cargo.toml            # Workspace + CLI crate
-├── dsh-version.txt       # 内置 dsh 版本锁定
-├── src/                  # CLI（clap + tokio）
-│   ├── main.rs           # 入口文件
-│   ├── cli.rs            # CLI 命令定义
-│   ├── config/           # TOML 配置管理
-│   ├── logging.rs        # tracing 双层日志
-│   └── datetime.rs       # 日期时间工具
-├── src-tauri/            # Tauri 2 桌面应用
-│   ├── src/              # 应用入口、dsh 进程与运行时管理
-│   ├── frontend/         # 加载页（轮询等待 dsh 服务就绪）
-│   ├── resources/        # 内置 dsh + pnpm（由 scripts 拉取）
-│   └── binaries/         # 内置 Node.js 运行时（sidecar）
-├── scripts/              # fetch-dsh.sh / fetch-runtime.sh
-├── tests/                # CLI 集成测试
-├── .github/workflows/    # CI / release-plz / cargo-dist + tauri-action
-└── .githooks/            # Git hooks
-```
+欢迎通过 [Issue](https://github.com/shenjingnan/dsh-work/issues) 和 PR 参与贡献。工作原理、本地开发与项目结构见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 许可
 
