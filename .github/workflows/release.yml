@@ -1,5 +1,15 @@
 name: Release
 
+# release-plz 打出 vX.Y.Z tag 后触发：先在原生 runner 上构建
+# Windows / macOS（双架构）/ Linux 的安装包并上传为 workflow artifacts
+# （此阶段不创建 Release），全平台成功后由 release job 汇总产物、
+# 重命名为用户友好的资产名、生成下载表格正文并一次性发布正式 Release。
+#
+# 集中收尾（而非各平台直接上传 Release）有两点收益：
+# 1. 资产重命名与下载表格必须在全平台产物汇总后统一处理；
+# 2. release job needs: build，四个矩阵全部成功才创建 Release，不会出现
+#    部分平台失败导致不完整产物公开的问题（v0.1.2 曾因 AppImage 失败踩坑），
+#    因此不再需要此前的「releaseDraft 草稿 + publish-release 转正」两步机制。
 on:
   push:
     tags: ['v*']
@@ -11,9 +21,9 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  build:
     # 用 triple 命名：macOS 双架构同为 macos-latest runner，platform 无法区分
-    name: Release (${{ matrix.triple }})
+    name: Build (${{ matrix.triple }})
     strategy:
       fail-fast: false
       matrix:
@@ -30,6 +40,8 @@ jobs:
           - platform: windows-latest
             triple: x86_64-pc-windows-msvc
             args: ''
+          # ubuntu-22.04 镜像 2026-09-17 起废弃（actions/runner-images#14254），
+          # 迁移 24.04 需重新验证 AppImage 打包（fuse2 缺失问题），单独处理
           - platform: ubuntu-22.04
             triple: x86_64-unknown-linux-gnu
             args: ''
@@ -71,30 +83,94 @@ jobs:
         shell: bash
         run: ./scripts/fetch-runtime.sh ${{ matrix.triple }}
 
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@v1
+        # 只构建并把产物上传为 workflow artifacts，不创建 Release：资产重命名
+        # 与下载表格由下方 release job 在全平台产物汇总后统一处理。
+        # 必须用 v1：v0 没有 uploadWorkflowArtifacts 输入。
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG_NAME: ${{ github.ref_name }}
         with:
-          tagName: ${{ env.TAG_NAME }}
-          releaseName: 'dsh-work ${{ env.TAG_NAME }}'
-          # 保持草稿模式：由下方 publish-release job 在全平台矩阵成功后统一转正式发布，
-          # 避免 releaseDraft: false 时第一个完成的平台立即公开不完整产物
-          # （v0.1.2 曾因 AppImage 失败导致 Linux 产物缺失）
-          releaseDraft: true
-          prerelease: false
           args: ${{ matrix.args }}
+          uploadWorkflowArtifacts: true
 
-  publish-release:
-    # 全平台构建成功后才把草稿转为正式发布并标记 Latest
-    needs: release
+  release:
+    name: Create GitHub Release
+    # needs: build 保证四个平台全部构建成功才走到这里，一次性发布正式 Release
+    needs: build
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - name: Publish draft release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-          TAG_NAME: ${{ github.ref_name }}
-        run: gh release edit "$TAG_NAME" --draft=false --prerelease=false --latest
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: '*'
+          merge-multiple: true
+
+      - name: Rename installers to user-friendly asset names
+        # Tauri 产物默认名对普通用户不友好：平台术语混杂
+        # （x64-setup / aarch64 / amd64 / x86_64 / en-US.msi）；
+        # Windows 双安装包、macOS 双架构无选择指引。统一重命名为
+        # <产品>_<平台>_<架构>.<后缀>，Release 资产列表按平台自动分组排序。
+        # 刻意不注入版本号：资产名跨版本保持不变，README 等处的
+        # releases/latest/download/<文件名> 直链因此永远指向最新版。
+        # 代价是下载到本地的文件名不含版本号（0.1.x 阶段可接受）；
+        # 未来启用 Tauri updater 时需恢复版本化资产。
+        # 未启用 updater（无 .sig 签名文件），重命名不影响任何校验。
+        # 注意：aarch64.dmg 分支必须在 x64.dmg 之前（前者同样匹配 *x64.dmg）。
+        # .app.tar.gz 面向高级用户（手动解包场景），保留 Tauri 原名不重命名。
+        shell: bash
+        run: |
+          shopt -s nullglob
+          for f in *; do
+            case "$f" in
+              *x64-setup.exe)  mv "$f" "dsh-work_Windows_x64.exe" ;;
+              *_en-US.msi)     mv "$f" "dsh-work_Windows_x64.msi" ;;
+              *aarch64.dmg)    mv "$f" "dsh-work_macOS_arm64.dmg" ;;
+              *x64.dmg)        mv "$f" "dsh-work_macOS_x64.dmg" ;;
+              *amd64.deb)      mv "$f" "dsh-work_Linux_amd64.deb" ;;
+              *x86_64.rpm)     mv "$f" "dsh-work_Linux_x86_64.rpm" ;;
+              *amd64.AppImage) mv "$f" "dsh-work_Linux_amd64.AppImage" ;;
+            esac
+          done
+          ls -1
+
+      - name: Generate release body (download guide)
+        # 生成带「平台选择表格 + 下载按钮」的正文。资产名不含版本号（见上方
+        # rename step），故链接用 <tag>/<固定文件名> 指向本次发布的具体资产。
+        # generate_release_notes 的自动变更日志会追加在 body 之后（表格在上、changelog 在下）。
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          BASE="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}"
+          cat > release_body.md <<EOF
+          ## 📦 下载
+
+          | 系统 | 芯片 / 架构 | 下载 | 说明 |
+          | --- | --- | --- | --- |
+          | **Windows 10 / 11** | x64 | [![Windows](https://img.shields.io/badge/download-Setup.exe-0078D6?logo=windows)](${BASE}/dsh-work_Windows_x64.exe) | 双击安装；企业批量部署可选 [MSI 版](${BASE}/dsh-work_Windows_x64.msi) |
+          | **macOS 13+** | Apple Silicon（M1/M2/M3/M4） | [![macOS](https://img.shields.io/badge/download-arm64.dmg-8E8E93?logo=apple)](${BASE}/dsh-work_macOS_arm64.dmg) | 不确定芯片？见下方说明 |
+          | **macOS 13+** | Intel | [![macOS](https://img.shields.io/badge/download-x64.dmg-8E8E93?logo=apple)](${BASE}/dsh-work_macOS_x64.dmg) | — |
+          | **Ubuntu / Debian** | amd64 | [![deb](https://img.shields.io/badge/download-amd64.deb-A80030?logo=debian&logoColor=white)](${BASE}/dsh-work_Linux_amd64.deb) | 或 [AppImage](${BASE}/dsh-work_Linux_amd64.AppImage) 免安装运行 |
+          | **Fedora / RHEL** | x86_64 | [![rpm](https://img.shields.io/badge/download-x86_64.rpm-294172?logo=fedora&logoColor=white)](${BASE}/dsh-work_Linux_x86_64.rpm) | 或 [AppImage](${BASE}/dsh-work_Linux_amd64.AppImage) 免安装运行 |
+
+          > 🍎 Mac 用户不确定选哪个？点按左上角  菜单 →「关于本机」：显示「芯片：Apple M…」下载 **arm64** 版；显示「处理器：Intel Core…」下载 **x64** 版。
+          EOF
+          cat release_body.md
+
+      - name: Publish release
+        # 用默认 GITHUB_TOKEN 即可：本仓库没有监听 release published 事件的
+        # 下游 workflow（不像 zapmomo 需要 PAT 触发百度网盘上传）
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: 'dsh-work ${{ github.ref_name }}'
+          draft: false
+          prerelease: false
+          body_path: release_body.md
+          generate_release_notes: true
+          files: |
+            *.dmg
+            *.app.tar.gz
+            *.deb
+            *.rpm
+            *.AppImage
+            *.msi
+            *.exe
