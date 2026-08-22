@@ -57,8 +57,13 @@ FIXER
 chmod +x "$STAGE/$FIXER_NAME"
 
 # 重建压缩镜像，覆盖原文件。用 ULMO（LZMA）而非 Tauri 默认的 UDZO（zlib）：
-# 同 payload 实测 94.9MB → 68.5MB（-28%）。ULMO 挂载需 macOS 10.15+，
+# 同 payload 实测 94.9MB → ~70MB（-26%）。ULMO 挂载需 macOS 10.15+，
 # 本项目 minimumSystemVersion 13.0，无兼容性问题。
+# 注意必须两步走：hdiutil create 直接 -format ULMO 的压缩率极差（UDIF 分块
+# 独立压缩，LZMA 字典无法跨块，405MB payload 实测只压到 209MB）；
+# 先 create 无压缩 UDRW 再 convert ULMO 才能达到 ~70MB。
 rm "$DMG"
-hdiutil create -volname "$VOL_NAME" -srcfolder "$STAGE" -ov -format ULMO -quiet "$DMG"
+hdiutil create -volname "$VOL_NAME" -srcfolder "$STAGE" -ov -format UDRW -quiet "$DMG.udrw"
+hdiutil convert "$DMG.udrw" -format ULMO -o "$DMG" -quiet
+rm -f "$DMG.udrw"
 echo "已注入 $FIXER_NAME -> $DMG"
