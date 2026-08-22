@@ -22,7 +22,11 @@
 
 **dsh-work** is the desktop app for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh): download, install, double-click — no Node.js setup required.
 
-> 🚧 This project is in early development. The repository contains both the Tauri 2 desktop app and a Rust CLI skeleton.
+> 🚧 This project is in early development.
+
+<div align="center">
+  <img src="docs/public/screenshot.png" alt="dsh-work desktop app screenshot" width="800" />
+</div>
 
 <details>
 
@@ -49,57 +53,9 @@ The CLI is also published to crates.io:
 cargo install dsh-work
 ```
 
-## How It Works
+## Contributing
 
-The desktop app ships everything dsh needs, so users never touch Node.js:
-
-1. **Bundled dsh** — `scripts/fetch-dsh.sh` pre-installs `@deepseek-ai/dsh` (version locked in `dsh-version.txt`) into `src-tauri/resources/dsh`, packed as Tauri resources
-2. **Bundled runtime** — `scripts/fetch-runtime.sh` fetches a per-platform Node.js binary (sidecar) and pnpm into the installer
-3. **Startup** — the app spawns the bundled Node to run `dsh web` on a loopback port, waits for readiness, then loads the local Web UI in a single window
-4. **Lifecycle** — the dsh child process is cleaned up on window close and on SIGTERM/SIGINT
-
-## Quick Start (CLI)
-
-```bash
-dsh-work config                  # Show configuration
-dsh-work greet --name World      # Greet a user (parameter demo)
-dsh-work completion bash         # Generate shell completion (bash/zsh/fish/powershell/elvish)
-```
-
-## Development
-
-```bash
-# CLI
-cargo run -- config
-cargo test                            # Run tests
-cargo fmt --check && cargo clippy -- -D warnings && cargo test   # Full check
-
-# Desktop app
-./scripts/fetch-dsh.sh                # Fetch bundled dsh
-./scripts/fetch-runtime.sh <triple>   # Fetch Node runtime + pnpm (e.g. aarch64-apple-darwin)
-```
-
-## Project Structure
-
-```
-├── Cargo.toml            # Workspace + CLI crate
-├── dsh-version.txt       # Bundled dsh version lock
-├── src/                  # CLI (clap + tokio)
-│   ├── main.rs           # Entry point
-│   ├── cli.rs            # CLI command definitions
-│   ├── config/           # TOML configuration management
-│   ├── logging.rs        # tracing dual-layer logging
-│   └── datetime.rs       # Date/time utilities
-├── src-tauri/            # Tauri 2 desktop app
-│   ├── src/              # App entry, dsh process & runtime management
-│   ├── frontend/         # Loading page (polls until the dsh server is ready)
-│   ├── resources/        # Bundled dsh + pnpm (fetched by scripts)
-│   └── binaries/         # Bundled Node.js runtime (sidecar)
-├── scripts/              # fetch-dsh.sh / fetch-runtime.sh
-├── tests/                # CLI integration tests
-├── .github/workflows/    # CI / release-plz / cargo-dist + tauri-action
-└── .githooks/            # Git hooks
-```
+Issues and PRs are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) (in Chinese) for how the app works, local development, and the project layout.
 
 ## License
 
