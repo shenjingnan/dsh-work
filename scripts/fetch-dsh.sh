@@ -22,6 +22,16 @@ else
   npm install --prefix "$DEST" "@deepseek-ai/dsh@$VERSION" --omit=dev --no-audit --no-fund
 fi
 
+# 清除与发布目标无关的平台原生二进制变体。AppImage 打包时 linuxdeploy 会
+# 递归扫描 AppDir 内所有 ELF 并部署动态依赖：musl 变体依赖
+# libc.musl-x86_64.so.1，glibc 环境下必然找不到而打包失败；linux-arm64
+# 变体在 x64 runner 上触发 patchelf 报错。本项目发布矩阵不含这两类目标
+# （macOS/Windows 不经过 linuxdeploy，删除同样无影响）。
+find "$DEST/node_modules" -type d \
+  \( -iname "*musl*" -o -iname "*linux-arm64*" \) \
+  -prune -exec rm -rf {} +
+echo ">> 已清除 musl / linux-arm64 平台变体"
+
 ENTRY="$DEST/node_modules/@deepseek-ai/dsh/lib/bin.js"
 if [[ ! -f "$ENTRY" ]]; then
   echo "!! 预装失败：缺少入口 $ENTRY" >&2
