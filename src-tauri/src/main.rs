@@ -1,4 +1,4 @@
-//! dsh-work 桌面应用入口：拉起内置 dsh web 服务，单窗口加载本地 Web UI。
+//! DSHWork（dsh-work 桌面应用）入口：拉起内置 dsh web 服务，单窗口加载本地 Web UI。
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
@@ -84,7 +84,7 @@ fn restart_server(state: tauri::State<'_, AppState>) -> Result<(), String> {
 ///   不受本仓库控制，拖拽条与窗口三键由注入脚本绘制；本地 loading 页自带控件会被跳过。
 fn build_main_window(app: &tauri::App) -> tauri::Result<()> {
     let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-        .title("dsh-work")
+        .title("DSHWork")
         .inner_size(1280.0, 800.0)
         .min_inner_size(960.0, 600.0)
         .background_color(tauri::utils::config::Color(255, 255, 255, 255));

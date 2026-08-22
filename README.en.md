@@ -5,7 +5,7 @@
 </div>
 
 <div align="center">
-  <img src="docs/public/logo.png" alt="dsh-work Logo" width="300" />
+  <img src="docs/public/logo.png" alt="DSHWork Logo" width="300" />
 
   <p>
     <a href="https://github.com/shenjingnan/dsh-work/releases"><img src="https://img.shields.io/github/v/release/shenjingnan/dsh-work" alt="GitHub Release" /></a>
@@ -20,7 +20,7 @@
   </p>
 </div>
 
-**dsh-work** is the desktop app for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh): download, install, double-click — no Node.js setup required.
+**DSHWork** (dsh-work) is the desktop app for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh): download, install, double-click — no Node.js setup required.
 
 > 🚧 This project is in early development.
 

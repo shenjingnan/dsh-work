@@ -1,7 +1,8 @@
 [package]
 name = "dsh-work-app"
-version = "0.1.0"
-description = "dsh-work 桌面应用（DeepSeek Harness 桌面壳）"
+# 桌面应用版本：与根 crate 保持一致；tauri.conf.json 未设 version，Tauri 从这里读取
+version = "0.1.3"
+description = "DSHWork — dsh-work 桌面应用（DeepSeek Harness 桌面壳）"
 edition = "2024"
 license = "MIT"
 # 桌面应用不发布到 crates.io（release-plz 会跳过，也防止误执行 cargo publish）
