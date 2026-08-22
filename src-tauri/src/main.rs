@@ -80,8 +80,10 @@ fn restart_server(state: tauri::State<'_, AppState>) -> Result<(), String> {
 /// - Windows：去掉系统标题栏；同时关 DWM shadow（undecorated+shadow 在 Win10 会被
 ///   DWM 画成左右底三边黑框），loading 页用 CSS 自绘边框。
 /// - Linux：去掉系统标题栏。
-/// - 非 macOS：注入 titlebar.js。窗口就绪后跳转到 dsh web 页面（127.0.0.1），其 DOM
-///   不受本仓库控制，拖拽条与窗口三键由注入脚本绘制；本地 loading 页自带控件会被跳过。
+/// - 非 macOS：注入 titlebar.js。窗口就绪后跳转到 dsh web 页面（127.0.0.1 随机端口），其 DOM
+///   不受本仓库控制，拖拽条与窗口三键由注入脚本绘制：标题栏透明融入页面（无背景无边框，
+///   三键颜色随页面深浅主题自适应），并给页面 html 注入等高 padding 让顶部内容完整下移、
+///   不被遮挡；IPC 授权见 capabilities/remote-dsh.json（URL 模式需带 :* 端口通配）。
 fn build_main_window(app: &tauri::App) -> tauri::Result<()> {
     let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
         .title("DSHWork")
