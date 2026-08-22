@@ -16,6 +16,15 @@ name: Release
 on:
   push:
     tags: ['v*']
+    # 验收通道：debug/perf 分支推送即触发完整 4 平台构建，产物体积在 run 的
+    # Artifacts 页面核对（新 CI 步骤在合入 main 到下个 tag 之间从未真正
+    # 执行过，#23/#28 教训）。分支 push 不以 refs/tags/ 开头，release job
+    # 的 if 会跳过发布，止步于 artifacts。
+    branches: ['debug/**', 'perf/**']
+  # 手动验收通道（合入 main 后生效，dispatch 要求触发器已存在于默认分支）：
+  # 行为同上，构建止步于 artifacts、不创建 Release——dispatch 时
+  # GITHUB_REF_NAME 是分支名而非 tag，发布会产生错误的资产链接。
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -133,14 +142,22 @@ jobs:
         # 只构建并把产物上传为 workflow artifacts，不创建 Release：资产重命名
         # 与下载表格由下方 release job 在全平台产物汇总后统一处理。
         # 必须用 v1：v0 没有 uploadWorkflowArtifacts 输入。
-        # Windows/Linux 仍由 action 直接上传；macOS 关闭 action 上传、改为下方
-        # 手动上传——注入 Gatekeeper 修复脚本必须发生在 dmg 产物落盘之后、
-        # 上传之前（action 的上传时机插不进自定义步骤）。
+        # 仅 Windows 由 action 直接上传；macOS/Linux 关闭 action 上传、改为
+        # 下方手动上传——macOS 要在 dmg 落盘后注入 Gatekeeper 修复脚本、
+        # Linux 要把 deb 重打包为 xz，都发生在产物落盘之后、上传之前
+        # （action 的上传时机插不进自定义步骤）。
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 注意：不要给 AppImage 设置 LDAI_COMP=xz——appimagetool continuous
+          # 内嵌的 mksquashfs 只编译了 zstd 压缩器（"Compressor xz is not
+          # supported"），且 zstd 本就是默认值（v0.1.4/v0.1.5 的 161MB 已是
+          # zstd），AppImage 在压缩器维度已无优化空间。
         with:
-          args: ${{ matrix.args }}
-          uploadWorkflowArtifacts: ${{ runner.os != 'macOS' }}
+          # --verbose 永久保留：tauri-bundler 默认吞掉 linuxdeploy 等子进程的
+          # stderr，只报 "failed to run linuxdeploy"；verbose 才透出真实原因
+          # （v0.1.2 AppImage 排查教训，2026-08 LDAI_COMP=xz 失败定位同样依赖它）
+          args: ${{ matrix.args }} --verbose
+          uploadWorkflowArtifacts: ${{ runner.os == 'Windows' }}
 
       - name: Stage macOS bundles and inject Gatekeeper fixer
         # 产物先拷到 staged/ 扁平目录再上传：upload-artifact 以多行 path 的
@@ -171,9 +188,44 @@ jobs:
           name: bundle-${{ matrix.triple }}
           path: staged/*
 
+      - name: Stage Linux bundles and repack deb with xz
+        # deb 的 data.tar 由 tauri-bundler 硬编码 gzip 打包（debian.rs 用
+        # flate2，无配置项），只能产物落盘后用 dpkg-deb 重打包为 xz
+        # （96.8MB → ~57MB，压缩级别用默认 6：xz 单线程，-9 耗时翻倍只省 ~1%）。
+        # rpm（tauri.conf.json compression=xz）与 AppImage（LDAI_COMP=xz）
+        # 构建期已生效，原样拷贝即可。
+        # fakeroot：保证重打包后 data.tar 内属主仍为 root:root——runner 上
+        # 非特权用户直接 -b 会把真实 uid/gid 写进 tar，安装后文件属主错乱。
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get install -y fakeroot
+          # 注意是仓库根 target/（workspace 布局，见上方 macOS 步骤注释）；
+          # Linux 未传 --target，产物在 target/release/bundle/（无 triple 层）
+          BUNDLE="target/release/bundle"
+          mkdir -p staged
+          cp "$BUNDLE"/deb/*.deb "$BUNDLE"/rpm/*.rpm "$BUNDLE"/appimage/*.AppImage staged/
+          for deb in staged/*.deb; do
+            REPACK="$(mktemp -d)/pkg"
+            dpkg-deb -R "$deb" "$REPACK"
+            fakeroot dpkg-deb -b -Zxz "$REPACK" "$deb"
+          done
+          ls -l staged
+
+      - name: Upload Linux bundles
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v6
+        with:
+          name: bundle-${{ matrix.triple }}
+          path: staged/*
+
   release:
     name: Create GitHub Release
-    # needs: build 保证四个平台全部构建成功才走到这里，一次性发布正式 Release
+    # needs: build 保证四个平台全部构建成功才走到这里，一次性发布正式 Release。
+    # 仅 tag 触发时发布：workflow_dispatch 验收构建止步于 artifacts，
+    # 不创建 Release（见 on.workflow_dispatch 注释；release 被跳过时
+    # needs 它的 upload-baidu-pan 一并跳过）。
+    if: startsWith(github.ref, 'refs/tags/')
     needs: build
     runs-on: ubuntu-latest
     steps:

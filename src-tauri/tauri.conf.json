@@ -19,6 +19,14 @@
       "resources/dsh": "dsh/",
       "resources/pnpm": "pnpm/"
     },
+    "linux": {
+      "rpm": {
+        "compression": {
+          "type": "xz",
+          "level": 9
+        }
+      }
+    },
     "macOS": {
       "minimumSystemVersion": "13.0",
       "files": {

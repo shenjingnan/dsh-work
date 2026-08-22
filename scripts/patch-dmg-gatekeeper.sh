@@ -56,7 +56,19 @@ fi
 FIXER
 chmod +x "$STAGE/$FIXER_NAME"
 
-# 重建压缩镜像（UDZO，与 create-dmg/Tauri 默认一致），覆盖原文件
-rm "$DMG"
-hdiutil create -volname "$VOL_NAME" -srcfolder "$STAGE" -ov -format UDZO -quiet "$DMG"
+# 重建压缩镜像，覆盖原文件。用 ULMO（LZMA）而非 Tauri 默认的 UDZO（zlib）：
+# 同 payload 实测 94.9MB → ~70MB（-26%）。ULMO 挂载需 macOS 10.15+，
+# 本项目 minimumSystemVersion 13.0，无兼容性问题。
+# 注意两点：
+# 1. 必须两步走：hdiutil create 直接 -format ULMO 压缩率极差（UDIF 分块独立
+#    压缩，LZMA 字典无法跨块，405MB payload 只压到 209MB）；先 create 无压缩
+#    UDRW 再 convert ULMO 才能达到 ~70MB。
+# 2. hdiutil create 会给不带 .dmg 后缀的输出名自动追加 .dmg（"$DMG.udrw"
+#    实际生成 "$DMG.udrw.dmg"），中间产物统一放 $WORK（mktemp 目录）并在
+#    转换成功后才覆盖原 dmg，失败不吞原产物。
+UDRW="$WORK/rebuild.udrw.dmg"
+ULMO="$WORK/rebuild.ulmo.dmg"
+hdiutil create -volname "$VOL_NAME" -srcfolder "$STAGE" -ov -format UDRW -quiet "$UDRW"
+hdiutil convert "$UDRW" -format ULMO -o "$ULMO" -quiet
+mv -f "$ULMO" "$DMG"
 echo "已注入 $FIXER_NAME -> $DMG"

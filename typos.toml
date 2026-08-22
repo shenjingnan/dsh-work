@@ -1,1 +1,4 @@
 [default.extend-words]
+# Rust gzip 库 crate 名 flate2（tauri-bundler 的 deb 打包依赖）：typos 分词
+# 剥离数字后按 flate 误报为 flat，按分词结果登记豁免
+flate = "flate"
