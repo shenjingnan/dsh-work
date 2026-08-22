@@ -54,6 +54,9 @@ jobs:
         if: runner.os == 'macOS'
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
+      - name: Cache cargo build artifacts
+        uses: Swatinem/rust-cache@v2
+
       - name: Install Tauri Linux dependencies
         if: runner.os == 'Linux'
         run: |

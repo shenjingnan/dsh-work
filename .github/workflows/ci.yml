@@ -29,6 +29,12 @@ jobs:
       - name: Ensure components for project toolchain
         run: rustup component add rustfmt clippy
 
+      - name: Cache cargo build artifacts
+        # 缓存 ~/.cargo（registry）+ target/。key 由 rustc 版本 + Cargo.lock
+        # 生成；Cargo.lock 未变时自动回退恢复最近一份缓存。保存前自动剔除
+        # workspace 自身 crate 的产物，避免缓存随每次提交膨胀。
+        uses: Swatinem/rust-cache@v2
+
       - name: Install Tauri Linux dependencies
         run: |
           sudo apt-get update
@@ -48,11 +54,32 @@ jobs:
       - name: Spell check
         run: typos .
 
-      - name: Tests
-        run: cargo test -- --test-threads=1
-
+      # 不在本 job 跑 cargo test：test matrix job 已在 ubuntu/macOS/Windows
+      # 三平台覆盖同一命令；此处重复跑会因 dev-deps 的 feature 统一差异
+      # 触发第二次全量重建。
       - name: Build
         run: cargo build
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo build artifacts
+        # tarpaulin 不能与 clippy/build 共用同一个 target/ 缓存：tarpaulin
+        # 会用插桩 RUSTFLAGS 全量重建，共 job 时 job 结束快照里只剩插桩产物，
+        # 下一 run 的 clippy/build 全部指纹失配，被迫每次从零编译。拆成独立
+        # job 后本 job 的 target/ 只有插桩这一种构建上下文，缓存自洽。
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Tauri Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev
 
       - name: Install cargo-tarpaulin
         uses: taiki-e/install-action@v2
@@ -81,6 +108,9 @@ jobs:
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo build artifacts
+        uses: Swatinem/rust-cache@v2
 
       - name: Install Tauri Linux dependencies
         if: runner.os == 'Linux'

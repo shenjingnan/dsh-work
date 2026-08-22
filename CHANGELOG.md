@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.1](https://github.com/shenjingnan/dsh-work/compare/v0.1.0...v0.1.1) - 2026-08-22
+
+### Added
+
+- 演进为 DeepSeek Harness 桌面应用（Tauri 2 + 内置运行时） ([#4](https://github.com/shenjingnan/dsh-work/pull/4))
+
 ## [0.1.0] - 2026-06-05
 
 ### Added
