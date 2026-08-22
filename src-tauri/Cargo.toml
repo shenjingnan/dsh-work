@@ -1,9 +1,10 @@
 [package]
 name = "dsh-work-app"
-# 桌面应用版本：与根 crate 保持一致；tauri.conf.json 未设 version，Tauri 从这里读取。
-# 注意 release-plz 因 publish = false 跳过本 crate，版本需随发版手动同步
-# （v0.1.4/v0.1.5 曾漂移到 0.1.3 未被同步）
-version = "0.1.5"
+# 版本继承 workspace 根的 [workspace.package].version，与 CLI 同源同版本，
+# 不再单独维护（tauri.conf.json 未设 version，Tauri 经 cargo metadata 读到
+# 继承解析后的值）。此前单独维护时因 release-plz 跳过 publish = false 的
+# crate，v0.1.4/v0.1.5 曾漂移到 0.1.3 未被同步。
+version.workspace = true
 description = "DSHWork — dsh-work 桌面应用（DeepSeek Harness 桌面壳）"
 edition = "2024"
 license = "MIT"
