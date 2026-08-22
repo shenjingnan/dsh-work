@@ -29,19 +29,27 @@ mkdir -p "$BINARIES" "$RESOURCES_PNPM"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-# --- Node ---
+# --- Node（CI 缓存命中时跳过下载） ---
+# 注意：不能用 VAR=...$( [[ ]] && echo ) 的内联写法，命令替换失败会让
+# set -e 直接退出脚本
+NODE_BIN="$BINARIES/node-$TRIPLE"
 if [[ "$NODE_PKG" == "exe" ]]; then
+  NODE_BIN="$NODE_BIN.exe"
+fi
+if [[ -f "$NODE_BIN" ]]; then
+  echo ">> node $NODE_VERSION ($NODE_DIST) 已存在（缓存命中），跳过"
+elif [[ "$NODE_PKG" == "exe" ]]; then
   # Windows：官方直接提供 node.exe 单文件
-  curl -fSL "https://nodejs.org/dist/$NODE_VERSION/$NODE_DIST/node.exe" \
-    -o "$BINARIES/node-$TRIPLE.exe"
+  curl -fSL "https://nodejs.org/dist/$NODE_VERSION/$NODE_DIST/node.exe" -o "$NODE_BIN"
+  echo ">> node $NODE_VERSION ($NODE_DIST) -> $NODE_BIN"
 else
   curl -fSL "https://nodejs.org/dist/$NODE_VERSION/node-$NODE_VERSION-$NODE_DIST.tar.gz" \
     -o "$TMP/node.tar.gz"
   tar -xzf "$TMP/node.tar.gz" -C "$TMP"
-  cp "$TMP/node-$NODE_VERSION-$NODE_DIST/bin/node" "$BINARIES/node-$TRIPLE"
-  chmod +x "$BINARIES/node-$TRIPLE"
+  cp "$TMP/node-$NODE_VERSION-$NODE_DIST/bin/node" "$NODE_BIN"
+  chmod +x "$NODE_BIN"
+  echo ">> node $NODE_VERSION ($NODE_DIST) -> $NODE_BIN"
 fi
-echo ">> node $NODE_VERSION ($NODE_DIST) -> $BINARIES/node-$TRIPLE$([[ "$NODE_PKG" == "exe" ]] && echo .exe)"
 
 # --- pnpm（单文件分发，经内置 node 执行；仅首次下载一次，各 triple 通用） ---
 if [[ ! -f "$RESOURCES_PNPM/pnpm.cjs" ]]; then

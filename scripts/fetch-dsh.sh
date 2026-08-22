@@ -9,6 +9,14 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 VERSION="$(tr -d '[:space:]' < "$ROOT/dsh-version.txt")"
 DEST="$ROOT/src-tauri/resources/dsh"
+ENTRY="$DEST/node_modules/@deepseek-ai/dsh/lib/bin.js"
+
+# CI 缓存命中时（actions/cache 按 dsh-version.txt 的 hash 恢复，版本已对齐）
+# 直接复用，跳过下载与 musl/arm64 清理（缓存保存的是清理后的最终状态）
+if [[ -f "$ENTRY" ]]; then
+  echo ">> dsh@$VERSION 已预装（缓存命中），跳过"
+  exit 0
+fi
 
 echo ">> 预装 @deepseek-ai/dsh@$VERSION 到 $DEST"
 rm -rf "$DEST"
@@ -32,7 +40,6 @@ find "$DEST/node_modules" -type d \
   -prune -exec rm -rf {} +
 echo ">> 已清除 musl / linux-arm64 平台变体"
 
-ENTRY="$DEST/node_modules/@deepseek-ai/dsh/lib/bin.js"
 if [[ ! -f "$ENTRY" ]]; then
   echo "!! 预装失败：缺少入口 $ENTRY" >&2
   exit 1
