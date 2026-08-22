@@ -112,11 +112,39 @@ jobs:
         # 只构建并把产物上传为 workflow artifacts，不创建 Release：资产重命名
         # 与下载表格由下方 release job 在全平台产物汇总后统一处理。
         # 必须用 v1：v0 没有 uploadWorkflowArtifacts 输入。
+        # Windows/Linux 仍由 action 直接上传；macOS 关闭 action 上传、改为下方
+        # 手动上传——注入 Gatekeeper 修复脚本必须发生在 dmg 产物落盘之后、
+        # 上传之前（action 的上传时机插不进自定义步骤）。
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: ${{ matrix.args }}
-          uploadWorkflowArtifacts: true
+          uploadWorkflowArtifacts: ${{ runner.os != 'macOS' }}
+
+      - name: Stage macOS bundles and inject Gatekeeper fixer
+        # 产物先拷到 staged/ 扁平目录再上传：upload-artifact 以多行 path 的
+        # 公共祖先为根保留目录结构，直接上传 bundle/ 会带出 dmg/、macos/ 子目录，
+        # release job 下载合并后 `for f in *` 就扫不到文件了。
+        # dmg 注入「首次打开修复.command」见 scripts/patch-dmg-gatekeeper.sh 头注释：
+        # 未签名 app 被 Gatekeeper 报「已损坏」，用户双击脚本即完成 xattr 修复。
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          BUNDLE="src-tauri/target/${{ matrix.triple }}/release/bundle"
+          mkdir -p staged
+          cp "$BUNDLE"/dmg/*.dmg staged/
+          cp "$BUNDLE"/macos/*.app.tar.gz staged/
+          for dmg in staged/*.dmg; do
+            ./scripts/patch-dmg-gatekeeper.sh "$dmg"
+          done
+          ls -l staged
+
+      - name: Upload macOS bundles
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v6
+        with:
+          name: bundle-${{ matrix.triple }}
+          path: staged/*
 
   release:
     name: Create GitHub Release
@@ -161,6 +189,8 @@ jobs:
         # 生成带「平台选择表格 + 下载按钮」的正文。资产名不含版本号（见上方
         # rename step），故链接用 <tag>/<固定文件名> 指向本次发布的具体资产。
         # generate_release_notes 的自动变更日志会追加在 body 之后（表格在上、changelog 在下）。
+        # 徽章用 shields.io 静态徽章：URL 以 '-' 开头留空左标签段，
+        # 按钮只显示「立即下载」（文件名/架构信息由表格前两列承担）。
         shell: bash
         run: |
           TAG="${GITHUB_REF_NAME}"
@@ -170,13 +200,15 @@ jobs:
 
           | 系统 | 芯片 / 架构 | 下载 | 说明 |
           | --- | --- | --- | --- |
-          | **Windows 10 / 11** | x64 | [![Windows](https://img.shields.io/badge/download-Setup.exe-0078D6?logo=windows)](${BASE}/DSHWork_Windows_x64.exe) | 双击安装；企业批量部署可选 [MSI 版](${BASE}/DSHWork_Windows_x64.msi) |
-          | **macOS 13+** | Apple Silicon（M1/M2/M3/M4） | [![macOS](https://img.shields.io/badge/download-arm64.dmg-8E8E93?logo=apple)](${BASE}/DSHWork_macOS_arm64.dmg) | 不确定芯片？见下方说明 |
-          | **macOS 13+** | Intel | [![macOS](https://img.shields.io/badge/download-x64.dmg-8E8E93?logo=apple)](${BASE}/DSHWork_macOS_x64.dmg) | — |
-          | **Ubuntu / Debian** | amd64 | [![deb](https://img.shields.io/badge/download-amd64.deb-A80030?logo=debian&logoColor=white)](${BASE}/DSHWork_Linux_amd64.deb) | 或 [AppImage](${BASE}/DSHWork_Linux_amd64.AppImage) 免安装运行 |
-          | **Fedora / RHEL** | x86_64 | [![rpm](https://img.shields.io/badge/download-x86_64.rpm-294172?logo=fedora&logoColor=white)](${BASE}/DSHWork_Linux_x86_64.rpm) | 或 [AppImage](${BASE}/DSHWork_Linux_amd64.AppImage) 免安装运行 |
+          | **Windows 10 / 11** | x64 | [![Windows](https://img.shields.io/badge/-立即下载-0078D6?logo=windows)](${BASE}/DSHWork_Windows_x64.exe) | 双击安装；企业批量部署可选 [MSI 版](${BASE}/DSHWork_Windows_x64.msi) |
+          | **macOS 13+** | Apple Silicon（M1/M2/M3/M4） | [![macOS](https://img.shields.io/badge/-立即下载-8E8E93?logo=apple)](${BASE}/DSHWork_macOS_arm64.dmg) | 不确定芯片？见下方说明 |
+          | **macOS 13+** | Intel | [![macOS](https://img.shields.io/badge/-立即下载-8E8E93?logo=apple)](${BASE}/DSHWork_macOS_x64.dmg) | — |
+          | **Ubuntu / Debian** | amd64 | [![deb](https://img.shields.io/badge/-立即下载-A80030?logo=debian&logoColor=white)](${BASE}/DSHWork_Linux_amd64.deb) | 或 [AppImage](${BASE}/DSHWork_Linux_amd64.AppImage) 免安装运行 |
+          | **Fedora / RHEL** | x86_64 | [![rpm](https://img.shields.io/badge/-立即下载-294172?logo=fedora&logoColor=white)](${BASE}/DSHWork_Linux_x86_64.rpm) | 或 [AppImage](${BASE}/DSHWork_Linux_amd64.AppImage) 免安装运行 |
 
-          > 🍎 Mac 用户不确定选哪个？点按左上角  菜单 →「关于本机」：显示「芯片：Apple M…」下载 **arm64** 版；显示「处理器：Intel Core…」下载 **x64** 版。
+          > 🍎 **Mac 用户看这里：**
+          > 1. 不确定选哪个？点按左上角  菜单 →「关于本机」：显示「芯片：Apple M…」下载 **arm64** 版；显示「处理器：Intel Core…」下载 **x64** 版。
+          > 2. 首次打开若提示「"DSHWork" 已损坏，无法打开」，并非真的损坏（应用未做 Apple 签名公证，被 Gatekeeper 拦截）：把 DSHWork 拖入 Applications 后，**双击 dmg 窗口里的「首次打开修复.command」**即可自动修复；或手动执行终端命令 \`xattr -cr /Applications/DSHWork.app\`。详见 README「macOS 首次打开」一节。
           EOF
           cat release_body.md
 
