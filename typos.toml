@@ -1,1 +1,3 @@
 [default.extend-words]
+# Rust gzip 库 crate 名（tauri-bundler 的 deb 打包依赖），非拼写错误
+flate2 = "flate2"
