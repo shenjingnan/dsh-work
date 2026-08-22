@@ -15,7 +15,7 @@
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue" alt="License: MIT" /></a>
     <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-1.85%2B-dea584?logo=rust" alt="Rust 1.85+" /></a>
     <a href="#下载"><img src="https://img.shields.io/badge/Windows-0078D6?logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0wIDBoMTEuNHYxMS40SDB6bTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6bTEyLjYgMEgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D" alt="Windows 支持" /></a>
-    <a href="#下载"><img src="https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=white" alt="macOS 支持" /></a>
+    <a href="#下载"><img src="https://img.shields.io/badge/MacOS-000000?logo=apple&logoColor=white" alt="MacOS 支持" /></a>
     <a href="#下载"><img src="https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black" alt="Linux 支持" /></a>
   </p>
 </div>
@@ -33,7 +33,7 @@
 <summary>✨ 特性一览</summary>
 
 - **开箱即用** — 安装包内置 Node.js 运行时与 dsh，用户无需安装任何依赖
-- **桌面应用形态** — 基于 Tauri 2，单窗口内嵌 dsh Web UI，支持 macOS / Windows / Linux
+- **桌面应用形态** — 基于 Tauri 2，单窗口内嵌 dsh Web UI，支持 MacOS / Windows / Linux
 - **本地优先** — dsh 服务在本机回环地址运行，数据不出设备
 - **自定义标题栏** — 无边框窗口，分平台实现自定义头部
 - **CLI 骨架** — 基于 clap 的命令行参数解析，支持子命令和 Shell 补全生成
@@ -50,8 +50,8 @@
 | 系统 | 芯片 / 架构 | 立即下载 |
 | --- | --- | --- |
 | Windows 10 / 11 | x64 | [![立即下载](https://img.shields.io/badge/-%E7%AB%8B%E5%8D%B3%E4%B8%8B%E8%BD%BD-0078D6?style=for-the-badge&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0wIDBoMTEuNHYxMS40SDB6bTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6bTEyLjYgMEgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D)](https://github.com/shenjingnan/dsh-work/releases/latest/download/DSHWork_Windows_x64.exe) |
-| macOS | Apple Silicon（M1/M2/M3/M4） | [![立即下载](https://img.shields.io/badge/-%E7%AB%8B%E5%8D%B3%E4%B8%8B%E8%BD%BD-8E8E93?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/shenjingnan/dsh-work/releases/latest/download/DSHWork_macOS_arm64.dmg) |
-| macOS | Intel | [![立即下载](https://img.shields.io/badge/-%E7%AB%8B%E5%8D%B3%E4%B8%8B%E8%BD%BD-8E8E93?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/shenjingnan/dsh-work/releases/latest/download/DSHWork_macOS_x64.dmg) |
+| MacOS | Apple Silicon（M1/M2/M3/M4） | [![立即下载](https://img.shields.io/badge/-%E7%AB%8B%E5%8D%B3%E4%B8%8B%E8%BD%BD-8E8E93?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/shenjingnan/dsh-work/releases/latest/download/DSHWork_macOS_arm64.dmg) |
+| MacOS | Intel | [![立即下载](https://img.shields.io/badge/-%E7%AB%8B%E5%8D%B3%E4%B8%8B%E8%BD%BD-8E8E93?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/shenjingnan/dsh-work/releases/latest/download/DSHWork_macOS_x64.dmg) |
 | Ubuntu / Debian | amd64 | [![立即下载](https://img.shields.io/badge/-%E7%AB%8B%E5%8D%B3%E4%B8%8B%E8%BD%BD-A80030?style=for-the-badge&logo=debian&logoColor=white)](https://github.com/shenjingnan/dsh-work/releases/latest/download/DSHWork_Linux_amd64.deb) |
 | Fedora / RHEL | x86_64 | [![立即下载](https://img.shields.io/badge/-%E7%AB%8B%E5%8D%B3%E4%B8%8B%E8%BD%BD-294172?style=for-the-badge&logo=fedora&logoColor=white)](https://github.com/shenjingnan/dsh-work/releases/latest/download/DSHWork_Linux_x86_64.rpm) |
 
@@ -59,12 +59,12 @@
 - 🍎 Mac 不确定芯片？左上角  →「关于本机」：显示「芯片：Apple M…」选 arm64，显示「处理器：Intel…」选 x64。首次打开提示「已损坏」？见下方修复说明。
 - 完整版本与更新日志见 [Releases](https://github.com/shenjingnan/dsh-work/releases)。
 
-### macOS 打开时提示「已损坏」？
+### MacOS 打开时提示「已损坏」？
 
 应用未经 Apple 签名公证，首次打开会被 Gatekeeper 拦截并提示「"DSHWork" 已损坏，无法打开。你应该将它移到废纸篓。」——**并非真的损坏**：
 
 <div align="center">
-  <img src="docs/public/macos-damaged-dialog.png" alt="macOS 提示 DSHWork 已损坏的弹窗" width="360" />
+  <img src="docs/public/macos-damaged-dialog.png" alt="MacOS 提示 DSHWork 已损坏的弹窗" width="360" />
 </div>
 
 两种修复方式（先把 DSHWork 拖入 Applications 文件夹）：
