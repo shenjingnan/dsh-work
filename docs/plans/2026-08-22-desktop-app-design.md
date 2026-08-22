@@ -17,7 +17,7 @@
 - **平台**：macOS (arm64/x64)、Windows x64、Linux amd64
 - **dsh 版本**：打包时锁定（`dsh-version.txt`），升级 dsh = 发新版应用
 - **隔离**：DSH_HOME 用 `~/.dsh-work`，与用户系统已装的 dsh（`~/.dsh`）互不干扰；只监听 127.0.0.1
-- **品牌**：logo/icon 已入库 `docs/public/`（JPEG，透明底被压黑，待用户替换原始 PNG）
+- **品牌**：logo/icon 已入库 `docs/public/`（透明底 PNG，由 tmp/ 下用户原始图重新生成）
 
 ## 阶段 0 验证结果（2026-08-22 已完成）
 
@@ -182,5 +182,5 @@ serde_json = "1"
 | macOS 未签名 Gatekeeper 拦截 | README 提供 `xattr -cr` 说明（同 ZapMomo） |
 | Windows SmartScreen | README 说明；长期可申请证书 |
 | dsh 升级引入新行为 | dsh-version.txt 锁定，升级走发版流程 + 阶段 0 复验 |
-| logo/icon 为 JPEG 黑底 | 待用户提供原始透明 PNG 后替换 `docs/public/` 并重跑 `tauri icon` |
+| 本地 DMG 打包失败（bundle_dmg.sh 需 Finder 自动化权限） | 本地环境问题，CI 无此限制；本地可用 `--bundles app` |
 | Linux webkitgtk 依赖 | tauri-action 标准流程安装；AppImage 兜底 |

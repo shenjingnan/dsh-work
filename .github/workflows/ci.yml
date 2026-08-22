@@ -3,10 +3,10 @@ name: CI
 on:
   push:
     branches: [main]
-    paths: ['Cargo.toml', 'Cargo.lock', 'src/**/*.rs', 'tests/**']
+    paths: ['Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'src/**/*.rs', 'src-tauri/**', 'tests/**']
   pull_request:
     branches: [main]
-    paths: ['Cargo.toml', 'Cargo.lock', 'src/**/*.rs', 'tests/**']
+    paths: ['Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'src/**/*.rs', 'src-tauri/**', 'tests/**']
 
 env:
   CARGO_TERM_COLOR: always
@@ -28,6 +28,11 @@ jobs:
 
       - name: Ensure components for project toolchain
         run: rustup component add rustfmt clippy
+
+      - name: Install Tauri Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev
 
       - name: Format check
         run: cargo fmt --check
@@ -76,6 +81,12 @@ jobs:
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Tauri Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev
 
       - name: Tests
         run: cargo test -- --test-threads=1
