@@ -10,6 +10,9 @@ name: Release
 # 2. release job needs: build，四个矩阵全部成功才创建 Release，不会出现
 #    部分平台失败导致不完整产物公开的问题（v0.1.2 曾因 AppImage 失败踩坑），
 #    因此不再需要此前的「releaseDraft 草稿 + publish-release 转正」两步机制。
+#
+# Release 发布成功后，由 upload-baidu-pan job（同 run 内 workflow_call 调用
+# upload-baidu-pan.yml）将资产与说明文档自动上传百度网盘。
 on:
   push:
     tags: ['v*']
@@ -215,8 +218,9 @@ jobs:
           cat release_body.md
 
       - name: Publish release
-        # 用默认 GITHUB_TOKEN 即可：本仓库没有监听 release published 事件的
-        # 下游 workflow（不像 zapmomo 需要 PAT 触发百度网盘上传）
+        # 用默认 GITHUB_TOKEN 即可：百度网盘上传（upload-baidu-pan job）走
+        # 同一 run 内的 workflow_call 调用，不依赖 release published 事件
+        # （GITHUB_TOKEN 产生的事件本就不会触发其他 workflow），无需 PAT
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
@@ -233,3 +237,14 @@ jobs:
             *.AppImage
             *.msi
             *.exe
+
+  upload-baidu-pan:
+    name: Upload to Baidu Netdisk
+    # Release 发布成功后自动上传全部资产 + 说明文档到百度网盘（镜像分发渠道）。
+    # 上传失败只影响本 job 状态，已发布的 GitHub Release 不受影响，可手动
+    # dispatch upload-baidu-pan.yml 补传（幂等覆盖），详见该文件头注释。
+    needs: release
+    uses: ./.github/workflows/upload-baidu-pan.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit

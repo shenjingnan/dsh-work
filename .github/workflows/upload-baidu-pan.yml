@@ -1,0 +1,214 @@
+name: Upload to Baidu Netdisk
+
+# 将 Release 全部安装包与两份纯文本说明上传到百度网盘的版本目录：
+#   /apps/dsh-work/releases/<tag>/DSHWork_*.dmg|.msi|.exe|.deb|.rpm|.AppImage ...
+#   /apps/dsh-work/releases/<tag>/更新说明.txt  （Release body 的自动变更日志）
+#   /apps/dsh-work/releases/<tag>/安装说明.txt  （README 下载章节纯文本化，单源不另维护）
+#
+# 双入口设计（方案 C）：
+#   workflow_call      — release.yml 的 release job 发布成功后以 needs: release
+#                        调用本 workflow，主发布链路全自动（见 release.yml 尾部）；
+#   workflow_dispatch  — 跨境链路（GitHub runner 在海外）不稳定时手动补传/重跑，
+#                        输入 tag 即可（upload --policy overwrite 幂等覆盖）。
+#
+# 为什么不像 zapmomo 那样监听 on: release: [published]：GITHUB_TOKEN 创建的
+# release 不触发其他 workflow 的 published 事件（GitHub 防递归机制），而本仓库
+# release.yml 恰用默认 GITHUB_TOKEN 发布——事件方式会静默不触发（无失败记录）。
+# 挂进同一 workflow run 则无此问题，也免去为此引入 PAT/App token 的维护成本。
+#
+# 前置配置（仓库 Settings → Secrets and variables → Actions）：
+#   BAIDU_BDUSS   浏览器登录百度网盘后 Cookie 中的 BDUSS
+#   BAIDU_STOKEN  同一 Cookie 中的 STOKEN（新版 BaiduPCS-Go 要求与 BDUSS 成对）
+# 凭据等同网盘账号控制权，建议使用发布专用小号；改密/退出登录/风控会使凭据
+# 失效，表现为本 workflow 登录失败，届时需手动更新 Secret。
+#
+# 主链路中位于 release job 之后：本 workflow 任何失败均不影响已发布的 GitHub
+# Release（发布早已完成），仅 Actions 状态变红，可 dispatch 重跑补救。
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Release tag（如 v0.1.5）'
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag（如 v0.1.5）'
+        required: true
+
+# 只读即可（下载 Release 资产/正文）；reusable workflow 权限不能超过 caller
+# （release.yml 的 contents: write），此处按需收紧
+permissions:
+  contents: read
+
+env:
+  # 两种入口下 tag 都经 inputs 传入（workflow_call 由 release.yml 用
+  # github.ref_name 显式传值），统一走 env，避免在 run: 内联表达式
+  # （GitHub Actions 注入防护），run 中只引用 $TAG。
+  TAG: ${{ inputs.tag }}
+  # 版本目录收在 releases/ 层级下，与网盘中其他杂物隔离；
+  # 必须按 tag 分目录：本仓库资产名刻意不含版本号，平铺会跨版本互相覆盖
+  NETDISK_DIR: /apps/dsh-work/releases
+  PCS_VERSION: v4.0.1
+
+jobs:
+  upload:
+    name: Upload installers to Baidu Netdisk
+    runs-on: ubuntu-latest
+    # GitHub 托管 runner 在海外，跨境上传百度网盘可能较慢，封顶防悬挂
+    timeout-minutes: 30
+    steps:
+      - name: Normalize tag
+        # 手动 dispatch 容易漏写 v 前缀（tag 实为 vX.Y.Z），漏写时
+        # gh release download 报 release not found。归一化补齐前缀，同时保证
+        # 网盘目录名（/apps/dsh-work/releases/<tag>）与主链路触发时口径一致。
+        run: echo "TAG=v${TAG#v}" >> "$GITHUB_ENV"
+
+      - name: Check credentials
+        env:
+          BDUSS: ${{ secrets.BAIDU_BDUSS }}
+          STOKEN: ${{ secrets.BAIDU_STOKEN }}
+        run: |
+          if [ -z "$BDUSS" ] || [ -z "$STOKEN" ]; then
+            echo "::error::缺少 BAIDU_BDUSS / BAIDU_STOKEN Secret。请在仓库 Settings → Secrets and variables → Actions 配置（浏览器登录百度网盘后从 Cookie 中提取），再重新触发本 workflow。"
+            exit 1
+          fi
+
+      - name: Checkout README (install guide source)
+        # 安装说明单源取自 README。取默认分支（main）而非 tag：安装说明与版本解耦
+        # （安装方式跨版本稳定），README 修正即时生效；亦免去 tag v 前缀归一化
+        # （GITHUB_ENV 写入的 TAG 对 with: ref: 不可见）。
+        # 必须在 Download release assets 之前：checkout 默认 clean: true 会
+        # git clean -ffdx，放在其后会把已下载的安装包清掉。
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Downloading assets of $TAG ..."
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir dist/
+          ls -lh dist/
+
+      - name: Generate text docs (release notes + install guide)
+        # 生成两份纯文本写入 dist/，由 Upload 步随安装包一并上传：
+        #   更新说明.txt — Release body 的自动变更日志（release.yml 开启
+        #                  generate_release_notes，## What's Changed 段与 Release
+        #                  页一致）；截取不到时回退完整 body
+        #   安装说明.txt — README「下载」至「贡献」前章节的纯文本化
+        # 格式：UTF-8 带 BOM + CRLF（受众为 Windows 记事本）；链接统一丢 URL 留文字。
+        # 维护契约：README 章节标题「下载」「贡献」是提取锚点，改名需同步
+        # 下方 awk 模式（提取失败 fail-fast，不会静默上传空文件）。
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 公共：markdown → 纯文本轻量清理
+          # （HTML 标签/图片删、链接丢 URL 留文字、加粗去星号、标题转【】、引用去 > ）
+          md_to_text() {
+            sed -E \
+              -e '/^\*\*Full Changelog\*\*/d' \
+              -e 's/<[^>]+>//g' \
+              -e 's/!\[[^]]*\]\([^)]*\)//g' \
+              -e 's/\[([^]]*)\]\(([^)]*)\)/\1/g' \
+              -e 's/\*\*([^*]+)\*\*/\1/g' \
+              -e 's/^#{1,6} +(.+)$/【\1】/' \
+              -e 's/^> //'
+          }
+          # 公共：UTF-8 BOM + CRLF（Windows 记事本兼容；输入保证为 LF）
+          to_notepad() { printf '\xef\xbb\xbf'; sed 's/$/\r/'; }
+
+          # --- 1) 更新说明.txt ---
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body -q .body > body.md
+          PUBLISHED=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --json publishedAt -q .publishedAt | cut -dT -f1)
+
+          awk "/^## What's Changed/{flag=1} flag" body.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "::warning::Release body 未找到 ## What's Changed 段（自动变更日志缺失），回退完整 body"
+            cp body.md notes.md
+          fi
+
+          {
+            echo "DSHWork ${TAG} 更新说明"
+            echo "发布日期：${PUBLISHED}"
+            echo "完整信息（含安装包下载）：https://github.com/${GITHUB_REPOSITORY}/releases/tag/${TAG}"
+            echo "============================================================"
+            echo
+            md_to_text < notes.md | sed -E \
+              -e 's|https://github\.com/[^ )]*/pull/([0-9]+)|#\1|g' \
+              -e "s/^【What's Changed】/【更新内容】/" \
+              -e 's/^【New Contributors】/【新贡献者】/'
+          } | to_notepad > "dist/更新说明.txt"
+
+          # --- 2) 安装说明.txt ---
+          # 本仓库 README 下载章节无下载表格，无需 zapmomo 的表格清理逻辑，
+          # 仅走公共清理 + 删代码围栏行（保留 cargo install 命令本身）
+          awk '/^## 下载/{flag=1} /^## 贡献/{flag=0} flag' README.md > install.md
+          if [ ! -s install.md ]; then
+            echo "::error::README 未找到「下载」章节，安装说明提取失败。README 章节标题变更时需同步本步骤的 awk 匹配模式。"
+            exit 1
+          fi
+
+          {
+            echo "DSHWork 安装说明"
+            echo "本说明由项目 README 自动生成，最新内容见：https://github.com/${GITHUB_REPOSITORY}#下载"
+            echo "============================================================"
+            echo
+            md_to_text < install.md | sed -E -e '/^```/d'
+          } | to_notepad > "dist/安装说明.txt"
+
+          file dist/*.txt
+
+      - name: Setup BaiduPCS-Go
+        run: |
+          curl -fsSL -o pcs.zip \
+            "https://github.com/qjfoidnh/BaiduPCS-Go/releases/download/${PCS_VERSION}/BaiduPCS-Go-${PCS_VERSION}-linux-amd64.zip"
+          # 校验官方 sha256（该二进制会接触账号凭据，防供应链篡改）
+          echo "ffbf6d15eef8f7df06ad59d46e7347c71d725dec24d1f558357bd27d16aa65b3  pcs.zip" | sha256sum -c -
+          unzip -o pcs.zip
+          install "BaiduPCS-Go-${PCS_VERSION}-linux-amd64/BaiduPCS-Go" /usr/local/bin/BaiduPCS-Go
+
+      - name: Login & create version dir
+        env:
+          BDUSS: ${{ secrets.BAIDU_BDUSS }}
+          STOKEN: ${{ secrets.BAIDU_STOKEN }}
+        run: |
+          BaiduPCS-Go login -bduss="$BDUSS" -stoken="$STOKEN"
+          BaiduPCS-Go who
+          # mkdir 对已存在目录报错，逐级创建并容错（重复触发幂等）
+          BaiduPCS-Go mkdir "$NETDISK_DIR" || true
+          BaiduPCS-Go mkdir "$NETDISK_DIR/$TAG" || true
+
+      - name: Upload installers
+        run: |
+          remote="$NETDISK_DIR/$TAG"
+          ok=0
+          for attempt in 1 2 3; do
+            if BaiduPCS-Go upload --policy overwrite dist/* "$remote/"; then
+              ok=1
+              break
+            fi
+            echo "::warning::上传失败（第 ${attempt}/3 次），15 秒后重试（v4 起上传无断点续传，按整轮重传）"
+            sleep 15
+          done
+          if [ "$ok" -ne 1 ]; then
+            echo "::error::3 次上传均失败。跨境链路（GitHub runner 在海外）不稳定时可稍后手动 dispatch 重跑；持续失败参考 BaiduPCS-Go 的 proxy_hostnames 回国代理配置"
+            exit 1
+          fi
+
+      - name: Verify & summary
+        run: |
+          remote="$NETDISK_DIR/$TAG"
+          {
+            echo "## 百度网盘上传结果"
+            echo
+            echo "- 版本：\`${TAG}\`"
+            echo "- 网盘目录：\`${remote}/\`"
+            echo
+            echo '```'
+            BaiduPCS-Go ls "$remote"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
