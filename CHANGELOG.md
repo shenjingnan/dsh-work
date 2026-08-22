@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.5](https://github.com/shenjingnan/dsh-work/compare/v0.1.4...v0.1.5) - 2026-08-22
+
+### Added
+
+- *(ci)* Release 发布后自动上传安装包与说明到百度网盘 ([#27](https://github.com/shenjingnan/dsh-work/pull/27))
+- *(release)* dmg 注入 Gatekeeper 修复脚本并优化下载入口 ([#23](https://github.com/shenjingnan/dsh-work/pull/23))
+
+### Other
+
+- 忽略 tmp 目录 ([#22](https://github.com/shenjingnan/dsh-work/pull/22))
+
 ## [0.1.4](https://github.com/shenjingnan/dsh-work/compare/v0.1.3...v0.1.4) - 2026-08-22
 
 ### Added
