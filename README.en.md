@@ -14,7 +14,7 @@
     <br />
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue" alt="License: MIT" /></a>
     <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-1.85%2B-dea584?logo=rust" alt="Rust 1.85+" /></a>
-    <a href="#download"><img src="https://img.shields.io/badge/Windows-0078D6?logo=windows&logoColor=white" alt="Windows support" /></a>
+    <a href="#download"><img src="https://img.shields.io/badge/Windows-0078D6?logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0wIDBoMTEuNHYxMS40SDB6bTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6bTEyLjYgMEgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D" alt="Windows support" /></a>
     <a href="#download"><img src="https://img.shields.io/badge/macOS-000000?logo=apple&logoColor=white" alt="macOS support" /></a>
     <a href="#download"><img src="https://img.shields.io/badge/Linux-FCC624?logo=linux&logoColor=black" alt="Linux support" /></a>
   </p>
@@ -45,25 +45,19 @@
 
 ## Download
 
-Click a button below to grab the latest installer for your system (no GitHub login required, always points to the latest release):
+Click a button below to grab the latest installer for your system:
 
 | System | Chip / Arch | Download |
 | --- | --- | --- |
-| Windows 10 / 11 | x64 | [![Download](https://img.shields.io/badge/-Download-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/shenjingnan/dsh-work/releases/latest/download/DSHWork_Windows_x64.exe) |
-| macOS 13+ | Apple Silicon (M1/M2/M3/M4) | [![Download](https://img.shields.io/badge/-Download-8E8E93?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/shenjingnan/dsh-work/releases/latest/download/DSHWork_macOS_arm64.dmg) |
-| macOS 13+ | Intel | [![Download](https://img.shields.io/badge/-Download-8E8E93?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/shenjingnan/dsh-work/releases/latest/download/DSHWork_macOS_x64.dmg) |
+| Windows 10 / 11 | x64 | [![Download](https://img.shields.io/badge/-Download-0078D6?style=for-the-badge&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0wIDBoMTEuNHYxMS40SDB6bTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6bTEyLjYgMEgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D)](https://github.com/shenjingnan/dsh-work/releases/latest/download/DSHWork_Windows_x64.exe) |
+| macOS | Apple Silicon (M1/M2/M3/M4) | [![Download](https://img.shields.io/badge/-Download-8E8E93?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/shenjingnan/dsh-work/releases/latest/download/DSHWork_macOS_arm64.dmg) |
+| macOS | Intel | [![Download](https://img.shields.io/badge/-Download-8E8E93?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/shenjingnan/dsh-work/releases/latest/download/DSHWork_macOS_x64.dmg) |
 | Ubuntu / Debian | amd64 | [![Download](https://img.shields.io/badge/-Download-A80030?style=for-the-badge&logo=debian&logoColor=white)](https://github.com/shenjingnan/dsh-work/releases/latest/download/DSHWork_Linux_amd64.deb) |
 | Fedora / RHEL | x86_64 | [![Download](https://img.shields.io/badge/-Download-294172?style=for-the-badge&logo=fedora&logoColor=white)](https://github.com/shenjingnan/dsh-work/releases/latest/download/DSHWork_Linux_x86_64.rpm) |
 
 - Windows: an [MSI installer](https://github.com/shenjingnan/dsh-work/releases/latest/download/DSHWork_Windows_x64.msi) is available for enterprise deployment; Linux: an [AppImage](https://github.com/shenjingnan/dsh-work/releases/latest/download/DSHWork_Linux_amd64.AppImage) build runs without installation.
 - 🍎 Not sure which Mac chip? Apple menu → About This Mac: "Chip: Apple M…" → arm64; "Processor: Intel…" → x64. If the first launch says the app is damaged, see the fix below.
 - Full version history and changelogs: [Releases](https://github.com/shenjingnan/dsh-work/releases).
-
-The CLI is also published to crates.io:
-
-```bash
-cargo install dsh-work
-```
 
 ### macOS says "DSHWork is damaged and can't be opened"?
 

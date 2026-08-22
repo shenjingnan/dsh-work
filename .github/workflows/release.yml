@@ -191,6 +191,8 @@ jobs:
         # generate_release_notes 的自动变更日志会追加在 body 之后（表格在上、changelog 在下）。
         # 徽章用 shields.io 静态徽章：URL 以 '-' 开头留空左标签段，
         # 按钮只显示「立即下载」（文件名/架构信息由表格前两列承担）。
+        # Windows 图标用 data URI 内嵌：simple-icons 已移除 Microsoft 系图标，
+        # logo=windows 不生效（无图标且按钮比其他平台窄 20px）。
         shell: bash
         run: |
           TAG="${GITHUB_REF_NAME}"
@@ -200,9 +202,9 @@ jobs:
 
           | 系统 | 芯片 / 架构 | 下载 | 说明 |
           | --- | --- | --- | --- |
-          | **Windows 10 / 11** | x64 | [![Windows](https://img.shields.io/badge/-立即下载-0078D6?logo=windows)](${BASE}/DSHWork_Windows_x64.exe) | 双击安装；企业批量部署可选 [MSI 版](${BASE}/DSHWork_Windows_x64.msi) |
-          | **macOS 13+** | Apple Silicon（M1/M2/M3/M4） | [![macOS](https://img.shields.io/badge/-立即下载-8E8E93?logo=apple)](${BASE}/DSHWork_macOS_arm64.dmg) | 不确定芯片？见下方说明 |
-          | **macOS 13+** | Intel | [![macOS](https://img.shields.io/badge/-立即下载-8E8E93?logo=apple)](${BASE}/DSHWork_macOS_x64.dmg) | — |
+          | **Windows 10 / 11** | x64 | [![Windows](https://img.shields.io/badge/-立即下载-0078D6?logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0wIDBoMTEuNHYxMS40SDB6bTEyLjYgMEgyNHYxMS40SDEyLjZ6TTAgMTIuNmgxMS40VjI0SDB6bTEyLjYgMEgyNFYyNEgxMi42eiIvPjwvc3ZnPg%3D%3D)](${BASE}/DSHWork_Windows_x64.exe) | 双击安装；企业批量部署可选 [MSI 版](${BASE}/DSHWork_Windows_x64.msi) |
+          | **macOS** | Apple Silicon（M1/M2/M3/M4） | [![macOS](https://img.shields.io/badge/-立即下载-8E8E93?logo=apple)](${BASE}/DSHWork_macOS_arm64.dmg) | 不确定芯片？见下方说明 |
+          | **macOS** | Intel | [![macOS](https://img.shields.io/badge/-立即下载-8E8E93?logo=apple)](${BASE}/DSHWork_macOS_x64.dmg) | — |
           | **Ubuntu / Debian** | amd64 | [![deb](https://img.shields.io/badge/-立即下载-A80030?logo=debian&logoColor=white)](${BASE}/DSHWork_Linux_amd64.deb) | 或 [AppImage](${BASE}/DSHWork_Linux_amd64.AppImage) 免安装运行 |
           | **Fedora / RHEL** | x86_64 | [![rpm](https://img.shields.io/badge/-立即下载-294172?logo=fedora&logoColor=white)](${BASE}/DSHWork_Linux_x86_64.rpm) | 或 [AppImage](${BASE}/DSHWork_Linux_amd64.AppImage) 免安装运行 |
 
