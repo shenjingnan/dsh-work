@@ -130,10 +130,10 @@ jobs:
         # （action 的上传时机插不进自定义步骤）。
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # AppImage 的 squashfs 默认 gzip 压缩（161MB），linuxdeploy 的
-          # appimage 插件支持 LDAI_COMP 环境变量指定算法，xz 后约 -30%。
-          # 子进程 linuxdeploy 继承此 env；其他平台不读该变量，无条件设置。
-          LDAI_COMP: xz
+          # 注意：不要给 AppImage 设置 LDAI_COMP=xz——appimagetool continuous
+          # 内嵌的 mksquashfs 只编译了 zstd 压缩器（"Compressor xz is not
+          # supported"），且 zstd 本就是默认值（v0.1.4/v0.1.5 的 161MB 已是
+          # zstd），AppImage 在压缩器维度已无优化空间。
         with:
           # --verbose 永久保留：tauri-bundler 默认吞掉 linuxdeploy 等子进程的
           # stderr，只报 "failed to run linuxdeploy"；verbose 才透出真实原因

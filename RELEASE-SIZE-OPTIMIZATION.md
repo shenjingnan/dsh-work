@@ -21,7 +21,7 @@ v0.1.4 Release 资产中，除 Windows NSIS 外所有安装包都在 93~161MB，
 | DSHWork_macOS_x64.dmg | 96.1 MB | zlib（UDZO） |
 | DSHWork_Linux_amd64.deb | 96.8 MB | gzip（tauri-bundler 源码硬编码 flate2） |
 | DSHWork_Linux_x86_64.rpm | 98.3 MB | gzip（RpmCompression 默认值） |
-| DSHWork_Linux_amd64.AppImage | 160.8 MB | squashfs gzip + 捆绑 GTK/webkit 库 |
+| DSHWork_Linux_amd64.AppImage | 160.8 MB | squashfs zstd（appimagetool 默认）+ 捆绑 GTK/webkit 库 |
 
 **核心证据**：Windows NSIS 包（49MB）与其他包内容几乎相同，仅因压缩算法不同就小了一半。同 payload 换强压缩即可大幅缩小，且零功能风险。
 
@@ -96,7 +96,7 @@ flowchart TD
 | dmg | tauri-bundler 产 UDZO；**main 上 PR #23 已有后处理**：挂载→拷出→注入修复脚本→`hdiutil create -format UDZO` 重建 | `scripts/patch-dmg-gatekeeper.sh` 末行改 `-format ULMO` 即完成优化 |
 | deb | tauri-bundler 硬编码 gzip（debian.rs 用 flate2），无配置 | 无既有插入点：Linux 需仿照 macOS 改为「action 不上传 + Stage 重打包 + 手动上传」 |
 | rpm | `bundle.linux.rpm.compression` 官方配置项（stable schema 已含 xz） | `tauri.conf.json` 加配置，构建期生效 |
-| AppImage | tauri-bundler 调 linuxdeploy（`--plugin gtk` 捆绑系统库，为固有地板约 +60MB）；linuxdeploy-plugin-appimage 支持 **`LDAI_COMP` 环境变量**指定压缩 | tauri-action step 的 env 加 `LDAI_COMP: xz`，构建期生效 |
+| AppImage | tauri-bundler 调 linuxdeploy（`--plugin gtk` 捆绑系统库，为固有地板约 +60MB）；压缩器由 appimagetool 内嵌 mksquashfs 决定 | **无优化空间**（实施时发现）：内嵌 mksquashfs 只编译了 zstd 且 zstd 已是默认，v0.1.4/v0.1.5 的 161MB 就是 zstd 产物；`LDAI_COMP=xz` 会直接失败（xz 未编译） |
 | msi | WiX 弱压缩，无配置项 | 决策：保留不动（用户已确认），下载表格继续作为企业选项 |
 
 ### 2.3 约束与坑（已踩过/已核实）
@@ -120,7 +120,7 @@ flowchart TD
 | 1 | dmg 转 LZMA | `scripts/patch-dmg-gatekeeper.sh` | 重建镜像 `-format UDZO` → `-format ULMO`（一行 + 注释）。同时把头注释中「UDZO，与 create-dmg/Tauri 默认一致」更新为 ULMO 说明（需 macOS 10.15+，本项目 min 13.0） |
 | 2 | deb 重打包 xz | `.github/workflows/release.yml` | Linux 仿照 macOS：`uploadWorkflowArtifacts: ${{ runner.os == 'Windows' }}`（仅 Windows 由 action 上传）；新增 Linux Stage 步骤：拷 `target/release/bundle/{deb,rpm,appimage}` 产物到 `staged/` → 对 `*.deb` 用 `fakeroot dpkg-deb -R/-b -Zxz -z9` 重打包（fakeroot 保证 tar 头 uid/gid 为 root:root；runner 上 `sudo apt-get install -y fakeroot` 预装）→ `upload-artifact`（name: `bundle-x86_64-unknown-linux-gnu`） |
 | 3 | rpm xz | `src-tauri/tauri.conf.json` | `bundle` 下新增：`"linux": { "rpm": { "compression": { "type": "xz", "level": 9 } } }`，构建期生效，无需 CI 改动 |
-| 4 | AppImage xz | `.github/workflows/release.yml` | tauri-action step 的 env 增加 `LDAI_COMP: xz`（linuxdeploy-plugin-appimage 官方变量，子进程继承；其他平台不读该变量，无条件设置即可） |
+| 4 | ~~AppImage xz~~ 不可行 | `.github/workflows/release.yml` | 实施结论：appimagetool continuous 内嵌 mksquashfs **只编译了 zstd 压缩器**（`LDAI_COMP=xz` 报 "Compressor xz is not supported"），zstd 已是默认值。AppImage 优化只剩阶段二内容裁剪 |
 | 5 | 验收通道 | `.github/workflows/release.yml` | `on:` 增加 `workflow_dispatch:`；release job 加 `if: startsWith(github.ref, 'refs/tags/')`（dispatch 只构建+产出 artifacts 供检查，不发布 Release——避免 dispatch 模式下 GITHUB_REF_NAME 是分支名导致资产链接错乱） |
 
 ### 阶段二：node_modules 内容裁剪（PR-B，基于阶段一验证后）
@@ -169,7 +169,7 @@ gantt
 | macOS x64 dmg | 96.1 MB | ≤ 76 MB | 同上 |
 | Linux deb | 96.8 MB | **≤ 65 MB** | 实测 56.9MB，留余量 |
 | Linux rpm | 98.3 MB | ≤ 70 MB | xz 压缩比参照 deb，留余量 |
-| Linux AppImage | 160.8 MB | **≤ 120 MB** | gzip→xz 估 -30%，留余量 |
+| Linux AppImage | 160.8 MB | 不变（zstd 已是唯一/默认压缩器，见 §2.2） | — |
 | Windows exe / msi | 49.0 / 93.3 MB | 不变 | 无改动 |
 
 3. dispatch 模式下确认 **未创建任何 Release**（release job 被 if 挡住）。
@@ -190,7 +190,7 @@ gantt
 
 | 风险 | 概率 | 缓解/回滚 |
 | --- | --- | --- |
-| LDAI_COMP=xz 后 AppImage 打包失败或产物异常 | 低（linuxdeploy 官方变量，xz 最传统） | dispatch 验证先行；回滚 = 删一行 env |
+| LDAI_COMP=xz 后 AppImage 打包失败 | **已实际发生**：appimagetool 内嵌 mksquashfs 未编译 xz。处置：不设 LDAI_COMP（zstd 默认已是最优） |
 | hdiutil create ULMO 产物在个别旧 macOS 打不开 | 极低（需 <10.15，本项目 min 13.0） | 回滚 = 脚本一行改回 UDZO |
 | deb 重打包后 owner/权限异常 | 低（fakeroot 保证 root:root） | dispatch 产物本地 `dpkg-deb -c` 抽查；回滚 = Stage 步骤跳过重打包 |
 | rpm xz 配置不被当前 tauri-cli 版本识别 | 低（stable schema 已含） | dispatch 构建若报 schema 错误则降级为 `{"type":"zstd","level":19}`（RHEL8+ 支持） |
@@ -215,7 +215,7 @@ gantt
 | macOS x64 dmg | 96.1 MB | ~70 MB | ~60 MB | -38% |
 | Linux deb | 96.8 MB | ~57 MB | **~48 MB** | **-50%** |
 | Linux rpm | 98.3 MB | ~62 MB | ~52 MB | -47% |
-| Linux AppImage | 160.8 MB | ~110 MB | ~100 MB | -38%（GTK 捆绑为固有地板） |
+| Linux AppImage | 160.8 MB | 160.8 MB | ~130 MB | -19%（zstd 已是默认压缩器，仅剩内容裁剪；GTK 捆绑为固有地板） |
 | Windows exe | 49.0 MB | 49.0 MB | ~46 MB | -6%（已接近极限） |
 | Windows msi | 93.3 MB | 93.3 MB | 93.3 MB | 0（决策：保留） |
 
