@@ -9,7 +9,6 @@
 
 use std::env;
 use std::ffi::OsString;
-use std::fs;
 use std::path::{Path, PathBuf};
 
 /// dsh 运行时的来源。
@@ -85,6 +84,14 @@ fn find_on_path(name: &str) -> Option<PathBuf> {
         .find(|candidate| candidate.is_file())
 }
 
+/// canonicalize 出子进程可用的绝对路径。
+///
+/// Windows 上 `fs::canonicalize` 返回 `\\?\` 扩展长度路径，node 等子进程
+/// 无法将其作为入口（CJS realpathSync 解析失败），需剥去该前缀。
+fn canonicalize_child(path: &Path) -> PathBuf {
+    dunce::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
+}
+
 /// 解析运行时。`resource_dir` 为 Tauri 的资源目录。
 ///
 /// 内置资源齐全时走 Bundled；否则回退到系统 PATH（开发模式）。
@@ -96,7 +103,7 @@ pub fn resolve_runtime(resource_dir: &Path) -> anyhow::Result<RuntimePaths> {
         let node_dir = node.parent().map(Path::to_path_buf).unwrap_or_default();
         return Ok(RuntimePaths {
             node,
-            dsh_entry: fs::canonicalize(&dsh_entry).unwrap_or(dsh_entry),
+            dsh_entry: canonicalize_child(&dsh_entry),
             extra_path_dirs: vec![pnpm_dir, node_dir],
             source: RuntimeSource::Bundled,
         });
@@ -106,7 +113,7 @@ pub fn resolve_runtime(resource_dir: &Path) -> anyhow::Result<RuntimePaths> {
     let dsh_bin = find_on_path(if cfg!(windows) { "dsh.cmd" } else { "dsh" }).ok_or_else(|| {
         anyhow::anyhow!("未找到内置 dsh 资源，且系统 PATH 上也没有 dsh（开发模式请先安装 dsh）")
     })?;
-    let dsh_entry = fs::canonicalize(&dsh_bin).unwrap_or(dsh_bin);
+    let dsh_entry = canonicalize_child(&dsh_bin);
     Ok(RuntimePaths {
         node: PathBuf::from("node"),
         dsh_entry,
@@ -168,6 +175,27 @@ mod tests {
         let joined = build_child_path(&extra, None);
         let dirs: Vec<_> = env::split_paths(&joined).collect();
         assert_eq!(dirs, vec![PathBuf::from("/res/pnpm")]);
+    }
+
+    #[test]
+    fn canonicalized_entry_has_no_extended_prefix() {
+        let dir =
+            std::env::temp_dir().join(format!("dsh-work-canonicalize-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("bin.js");
+        std::fs::write(&file, "// test").unwrap();
+
+        let resolved = canonicalize_child(&file);
+
+        let s = resolved.to_string_lossy();
+        assert!(
+            !s.starts_with(r"\\?\"),
+            r"子进程不接受 \\?\ 扩展路径前缀: {s}"
+        );
+        assert!(resolved.is_absolute(), "应保持绝对路径: {s}");
+        assert!(resolved.ends_with("bin.js"), "应仍指向原文件: {s}");
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

@@ -24,6 +24,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 anyhow = "1"
 ctrlc = { version = "3", features = ["termination"] }
 
+# Windows 上 canonicalize 去除 \\?\ 扩展路径前缀（node 子进程不接受该前缀）
+dunce = "1"
+
 [features]
 # 自定义 feature，用于 tauri 的 macOS 私有 API 等场景（暂未使用）
 custom-protocol = ["tauri/custom-protocol"]
