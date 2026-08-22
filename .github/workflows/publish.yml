@@ -25,6 +25,9 @@ jobs:
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Cache cargo build artifacts
+        uses: Swatinem/rust-cache@v2
+
       - name: Generate GitHub App token
         uses: actions/create-github-app-token@v2
         id: app-token
@@ -58,6 +61,9 @@ jobs:
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo build artifacts
+        uses: Swatinem/rust-cache@v2
 
       - name: Generate GitHub App token
         uses: actions/create-github-app-token@v2
