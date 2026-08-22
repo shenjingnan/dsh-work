@@ -25,6 +25,9 @@ jobs:
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Cache cargo build artifacts
+        uses: Swatinem/rust-cache@v2
+
       - name: Run release-plz (create tag + publish to crates.io)
         id: release
         uses: release-plz/action@v0.5
@@ -51,6 +54,9 @@ jobs:
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo build artifacts
+        uses: Swatinem/rust-cache@v2
 
       - name: Run release-plz
         uses: release-plz/action@v0.5
