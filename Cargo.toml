@@ -7,7 +7,7 @@ resolver = "2"
 # release-plz 发版时 bump 这一处即可同步推进（此前桌面应用单独维护版本，
 # 因 release-plz 跳过 publish = false 的 crate，v0.1.4/v0.1.5 曾漂移未同步）。
 [workspace.package]
-version = "0.1.5"
+version = "0.1.6"
 
 [package]
 name = "dsh-work"
