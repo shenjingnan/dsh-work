@@ -11,7 +11,9 @@ use std::sync::{Arc, Mutex, OnceLock};
 use process::{DshHandle, DshStatus};
 use runtime::RuntimePaths;
 use serde::Serialize;
-use tauri::{Manager, RunEvent};
+#[cfg(target_os = "macos")]
+use tauri::TitleBarStyle;
+use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
 
 /// dsh 进程句柄的共享容器（应用状态与信号处理器共用）。
 type SharedDsh = Arc<Mutex<Option<DshHandle>>>;
@@ -71,6 +73,45 @@ fn restart_server(state: tauri::State<'_, AppState>) -> Result<(), String> {
     Ok(())
 }
 
+/// 创建主窗口（无原生标题栏，参考 zapmomo 的分平台处理）。
+///
+/// - macOS：透明标题栏 + 隐藏标题文字，保留系统红绿灯；标题栏区域由系统原生承担拖拽，
+///   窗口背景设为白色与 loading 页一致（跳转到 dsh 页面后该区域仍可拖动，无需注入）。
+/// - Windows：去掉系统标题栏；同时关 DWM shadow（undecorated+shadow 在 Win10 会被
+///   DWM 画成左右底三边黑框），loading 页用 CSS 自绘边框。
+/// - Linux：去掉系统标题栏。
+/// - 非 macOS：注入 titlebar.js。窗口就绪后跳转到 dsh web 页面（127.0.0.1），其 DOM
+///   不受本仓库控制，拖拽条与窗口三键由注入脚本绘制；本地 loading 页自带控件会被跳过。
+fn build_main_window(app: &tauri::App) -> tauri::Result<()> {
+    let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+        .title("dsh-work")
+        .inner_size(1280.0, 800.0)
+        .min_inner_size(960.0, 600.0)
+        .background_color(tauri::utils::config::Color(255, 255, 255, 255));
+
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder
+            .title_bar_style(TitleBarStyle::Transparent)
+            .hidden_title(true);
+    }
+    #[cfg(target_os = "windows")]
+    {
+        builder = builder.decorations(false).shadow(false);
+    }
+    #[cfg(target_os = "linux")]
+    {
+        builder = builder.decorations(false);
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        builder = builder.initialization_script(include_str!("titlebar.js"));
+    }
+
+    builder.build()?;
+    Ok(())
+}
+
 fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -88,6 +129,7 @@ fn main() {
             }
         }))
         .setup(|app| {
+            build_main_window(app)?;
             let resource_dir = app
                 .path()
                 .resource_dir()

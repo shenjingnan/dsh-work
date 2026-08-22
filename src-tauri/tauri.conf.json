@@ -8,16 +8,6 @@
   },
   "app": {
     "withGlobalTauri": true,
-    "windows": [
-      {
-        "label": "main",
-        "title": "dsh-work",
-        "width": 1280,
-        "height": 800,
-        "minWidth": 960,
-        "minHeight": 600
-      }
-    ],
     "security": {
       "csp": null
     }
