@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.4](https://github.com/shenjingnan/dsh-work/compare/v0.1.3...v0.1.4) - 2026-08-22
+
+### Added
+
+- *(desktop)* 桌面应用更名 DSHWork 并统一版本号来源 ([#21](https://github.com/shenjingnan/dsh-work/pull/21))
+- *(ci)* 统一 Release 资产命名并在正文顶部增加下载表格 ([#19](https://github.com/shenjingnan/dsh-work/pull/19))
+
+### Fixed
+
+- *(ci)* 全平台构建成功后自动发布 release 草稿 ([#17](https://github.com/shenjingnan/dsh-work/pull/17))
+
+### Other
+
+- *(readme)* README 聚焦用户视角，开发内容迁移至 CONTRIBUTING ([#20](https://github.com/shenjingnan/dsh-work/pull/20))
+
 ## [0.1.3](https://github.com/shenjingnan/dsh-work/compare/v0.1.2...v0.1.3) - 2026-08-22
 
 ### Added
