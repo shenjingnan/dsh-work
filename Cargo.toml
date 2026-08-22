@@ -2,9 +2,16 @@
 members = [".", "src-tauri"]
 resolver = "2"
 
+# 全 workspace 共享版本：CLI（dsh-work）与桌面应用（dsh-work-app）永远同版本。
+# 唯一版本号在这里维护，两个 crate 用 version.workspace = true 继承；
+# release-plz 发版时 bump 这一处即可同步推进（此前桌面应用单独维护版本，
+# 因 release-plz 跳过 publish = false 的 crate，v0.1.4/v0.1.5 曾漂移未同步）。
+[workspace.package]
+version = "0.1.5"
+
 [package]
 name = "dsh-work"
-version = "0.1.5"
+version.workspace = true
 edition = "2024"
 rust-version = "1.85"
 description = "dsh-work CLI 工具"
