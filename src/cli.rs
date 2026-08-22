@@ -4,9 +4,9 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Parser)]
 #[command(
-    name = "ai-rust-starter",
+    name = "dsh-work",
     version = VERSION,
-    about = "A Rust project starter template",
+    about = "dsh-work CLI 工具",
     subcommand_required = true,
     arg_required_else_help = true,
     disable_help_subcommand = true,
@@ -52,7 +52,7 @@ fn cmd_config() -> Result<String, String> {
 /// greet 命令
 fn cmd_greet(name: &str, count: u32) -> Result<(), String> {
     for _ in 0..count {
-        println!("你好, {}！欢迎使用 ai-rust-starter。", name);
+        println!("你好, {}！欢迎使用 dsh-work。", name);
     }
     Ok(())
 }
@@ -60,7 +60,7 @@ fn cmd_greet(name: &str, count: u32) -> Result<(), String> {
 /// completion 命令
 fn cmd_completion<W: std::io::Write>(shell: clap_complete::Shell, writer: &mut W) {
     let mut cmd = Cli::command();
-    clap_complete::generate(shell, &mut cmd, "ai-rust-starter", writer);
+    clap_complete::generate(shell, &mut cmd, "dsh-work", writer);
 }
 
 /// CLI 入口

@@ -1,6 +1,6 @@
-# ai-rust-starter
+# dsh-work
 
-一个开箱即用的 **Rust 项目快速启动模板**。
+dsh-work 命令行工具。
 
 ## 特性
 
@@ -9,23 +9,22 @@
 - **配置管理** — TOML 格式的配置文件读写，支持 `${env.VAR}` 环境变量引用
 - **双层日志** — 基于 tracing 的日志系统，同时输出到文件和 stderr
 - **日期时间工具** — 基于 chrono 的常用时间格式转换函数
-- **测试支持** — 集成 tempfile 的测试隔离辅助工具
-- **代码质量** — cargo fmt / clippy / typos / tarpaulin / codecov 一站式配置
-- **CI/CD** — GitHub Actions 自动化测试、发布、覆盖率报告
 - **Shell 补全** — 支持 bash / zsh / fish / powershell 自动补全
+
+## 安装
+
+```bash
+cargo install dsh-work
+```
 
 ## 快速开始
 
 ```bash
-# 运行
-cargo run
-cargo run -- config
-cargo run -- greet --name World
+dsh-work config
+dsh-work greet --name World
 
-# 测试
+# 开发
 cargo test
-
-# 代码质量检查
 cargo fmt --check
 cargo clippy -- -D warnings
 ```
@@ -49,14 +48,12 @@ cargo clippy -- -D warnings
 └── .githooks/           # Git hooks
 ```
 
-## 使用此模板
+## 开发指南
 
-1. 基于此仓库创建新项目
-2. 全局搜索替换 `ai-rust-starter` 为你的项目名
-3. 修改 `Cargo.toml` 中的项目元信息（name, version, description）
-4. 按需调整依赖（`Cargo.toml` 中的可选依赖已注释说明）
-5. 在 `src/cli.rs` 中定义你的命令
-6. 开始编写业务代码
+1. 修改 `Cargo.toml` 中的项目元信息（version, description）
+2. 按需调整依赖（`Cargo.toml` 中的可选依赖已注释说明）
+3. 在 `src/cli.rs` 中定义你的命令
+4. 开始编写业务代码
 
 ## 依赖说明
 
