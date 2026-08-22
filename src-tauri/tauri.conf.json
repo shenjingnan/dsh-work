@@ -1,7 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "dsh-work",
-  "version": "0.1.0",
+  "productName": "DSHWork",
   "identifier": "com.shenjingnan.dsh-work",
   "build": {
     "frontendDist": "frontend"
