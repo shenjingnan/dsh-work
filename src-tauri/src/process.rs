@@ -4,6 +4,9 @@ use std::collections::VecDeque;
 use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
+
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant};
 
@@ -11,6 +14,11 @@ use crate::runtime::{RuntimePaths, build_child_path, parse_dsh_url};
 
 /// stderr 环形缓冲容量（行进），用于启动失败时回填诊断信息。
 const STDERR_TAIL_LINES: usize = 20;
+
+/// Windows `CREATE_NO_WINDOW` 进程创建标志：GUI 子系统进程启动控制台子进程
+/// （node.exe）时，系统默认为其新建一个可见的命令行窗口，此标志阻止该窗口。
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
 /// dsh web 服务状态。
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -59,13 +67,18 @@ impl DshHandle {
         path: std::ffi::OsString,
     ) -> std::io::Result<Self> {
         std::fs::create_dir_all(dsh_home)?;
-        let mut child = Command::new(program)
+        let mut command = Command::new(program);
+        command
             .args(args)
             .env("DSH_HOME", dsh_home)
             .env("PATH", path)
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()?;
+            .stderr(Stdio::piped());
+        // Windows：桌面应用为 GUI 子系统（无控制台），拉起 node（控制台程序）时系统
+        // 会为其新建可见命令行窗口；stdout/stderr 均已管道重定向，隐藏窗口不影响输出。
+        #[cfg(windows)]
+        command.creation_flags(CREATE_NO_WINDOW);
+        let mut child = command.spawn()?;
 
         let shared = Arc::new(Shared {
             status: Mutex::new(DshStatus::Starting),
