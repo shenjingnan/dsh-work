@@ -66,7 +66,12 @@ jobs:
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
 
       - name: Cache cargo build artifacts
+        # 按 triple 分缓存线：macOS 双 target 两个矩阵条目若共用 key 会互相
+        # 覆盖，导致另一条永远冷缓存（对齐 zapmomo 的处理）。
+        # 注意：prefix-key 变更后的首次构建会全量重建一次。
         uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: rust-${{ matrix.triple }}
 
       - name: Install Tauri Linux dependencies
         # 24.04（noble）移除了 libappindicator3-dev，改用 Tauri v2 官方
@@ -76,9 +81,28 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
 
+      - name: Cache bundled dsh
+        # @deepseek-ai/dsh 含多平台原生二进制、体积大，pnpm add 纯属网络下载；
+        # 产物内容只由 dsh-version.txt 决定，命中后 fetch-dsh.sh 直接跳过安装。
+        # 按 OS 分缓存线（unix 可执行位跨 OS 恢复不保真），macOS 双 target 共线。
+        uses: actions/cache@v6
+        with:
+          path: src-tauri/resources/dsh
+          key: dsh-${{ runner.os }}-${{ hashFiles('dsh-version.txt') }}
+
       - name: Fetch bundled dsh
         shell: bash
         run: ./scripts/fetch-dsh.sh
+
+      - name: Cache Node runtime and pnpm
+        # Node 官方二进制（~40-80MB）按 triple 各一份；NODE_VERSION/PNPM_VERSION
+        # 硬编码在 fetch-runtime.sh 内，脚本内容变化即产生新 key，随版本升级失效。
+        uses: actions/cache@v6
+        with:
+          path: |
+            src-tauri/binaries
+            src-tauri/resources/pnpm
+          key: runtime-${{ matrix.triple }}-${{ hashFiles('scripts/fetch-runtime.sh') }}
 
       - name: Fetch Node runtime and pnpm
         shell: bash
