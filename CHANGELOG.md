@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.2](https://github.com/shenjingnan/dsh-work/compare/v0.1.1...v0.1.2) - 2026-08-22
+
+### Fixed
+
+- *(ci)* 合并 macOS 构建到 macos-latest 并交叉编译 x86_64 ([#9](https://github.com/shenjingnan/dsh-work/pull/9))
+
+### Other
+
+- 忽略 .claude/worktrees 目录 ([#12](https://github.com/shenjingnan/dsh-work/pull/12))
+- *(ci)* release-plz 改用 GitHub App token ([#10](https://github.com/shenjingnan/dsh-work/pull/10))
+- 为 GitHub Actions 工作流添加 Rust 构建缓存 ([#7](https://github.com/shenjingnan/dsh-work/pull/7))
+
 ## [0.1.1](https://github.com/shenjingnan/dsh-work/compare/v0.1.0...v0.1.1) - 2026-08-22
 
 ### Added
