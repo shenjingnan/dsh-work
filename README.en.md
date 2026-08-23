@@ -33,6 +33,7 @@
 <summary>✨ Features</summary>
 
 - **Batteries included** — the installer bundles a Node.js runtime and dsh itself; nothing else to install
+- **Built-in plugin market** — ships with the [dshmarket](https://github.com/dsh-market/dsh-market) plugin market on first launch: browse, search, and one-click install community plugins from the [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) list right inside the dsh Web UI (installing plugins requires network access)
 - **Desktop app** — Tauri 2, single window embedding the dsh Web UI, for macOS / Windows / Linux
 - **Local first** — the dsh service runs on the loopback address; your data never leaves the device
 - **Custom title bar** — frameless window with a per-platform custom header
@@ -85,3 +86,16 @@ Issues and PRs are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) (in Chinese) 
 ## License
 
 [MIT](LICENSE)
+
+### Bundled third-party components
+
+To work out of the box, the installer ships with the following third-party components (versions pinned in the referenced files and distributed inside the app bundle):
+
+| Component | License | Version pinned in | Purpose |
+| --- | --- | --- | --- |
+| [Node.js](https://nodejs.org/) | [MIT](https://github.com/nodejs/node/blob/main/LICENSE) | `scripts/fetch-runtime.sh` | Bundled JS runtime |
+| [pnpm](https://pnpm.io/) | [MIT](https://github.com/pnpm/pnpm/blob/main/LICENSE) | `scripts/fetch-runtime.sh` | dsh plugin installer |
+| [@deepseek-ai/dsh](https://github.com/deepseek-ai/deepseek-harness) | [MIT](https://github.com/deepseek-ai/deepseek-harness/blob/master/LICENSE) | [`dsh-version.txt`](dsh-version.txt) | DeepSeek Harness itself |
+| [dshmarket](https://github.com/dsh-market/dsh-market) | [MIT](https://github.com/dsh-market/dsh-market/blob/main/LICENSE) | [`plugins-version.txt`](plugins-version.txt) | Plugin market (community maintained) |
+
+> ⚠️ The plugin market and the plugins it lists are community-maintained (being listed on awesome-dsh-plugin is not a security review). Installing a plugin runs third-party code on your machine — evaluate trust before installing.
