@@ -18,11 +18,9 @@
       color: #1f2329;
       user-select: none;
     }
-    /* Windows：undecorated 且已关 DWM shadow，补一圈 CSS 边框 */
-    body.windows { border: 1px solid #d9d9d9; }
     img.logo { width: 180px; border-radius: 24px; box-shadow: 0 8px 32px rgba(13,71,200,.25); }
 
-    /* 自定义标题栏（仅非 macOS 显示；macOS 由系统红绿灯 + 透明标题栏承担） */
+    /* 自定义标题栏（仅 Linux 显示；macOS 由系统红绿灯 + 透明标题栏承担，Windows 用系统原生标题栏） */
     #titlebar {
       position: fixed; top: 0; left: 0; right: 0; height: 32px; z-index: 10;
       display: flex; align-items: stretch; justify-content: flex-end;
@@ -61,7 +59,7 @@
   </style>
 </head>
 <body>
-  <!-- 自定义标题栏：整条为拖拽区，右侧窗口三键；macOS 下保持隐藏（系统红绿灯 + 原生拖拽区） -->
+  <!-- 自定义标题栏：整条为拖拽区，右侧窗口三键；仅 Linux 显示（macOS 由系统红绿灯承担，Windows 用系统原生标题栏） -->
   <div id="titlebar" data-tauri-drag-region class="hidden">
     <button id="btn-min" type="button" aria-label="最小化" title="最小化">
       <svg width="12" height="12" viewBox="0 0 12 12"><line x1="1" y1="6" x2="11" y2="6" stroke="currentColor" stroke-width="1.2"/></svg>
@@ -92,12 +90,12 @@
     const errorEl = document.getElementById('error');
     const detailEl = document.getElementById('error-detail');
 
-    // 平台相关：macOS 由系统红绿灯 + 透明标题栏承担拖拽，隐藏页内标题栏；
-    // Windows/Linux 显示页内标题栏并接线窗口三键。
+    // 平台相关：macOS 由系统红绿灯 + 透明标题栏承担，Windows 用系统原生标题栏，
+    // 仅 Linux 显示页内标题栏并接线窗口三键。
     const ua = navigator.userAgent;
-    if (!ua.includes('Macintosh')) {
+    const isLinux = !ua.includes('Macintosh') && !ua.includes('Windows');
+    if (isLinux) {
       document.getElementById('titlebar').classList.remove('hidden');
-      if (ua.includes('Windows')) document.body.classList.add('windows');
       const win = window.__TAURI__?.window?.getCurrentWindow();
       if (win) {
         document.getElementById('btn-min').addEventListener('click', () => win.minimize());
