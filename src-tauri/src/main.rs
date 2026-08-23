@@ -74,18 +74,19 @@ fn restart_server(state: tauri::State<'_, AppState>) -> Result<(), String> {
     Ok(())
 }
 
-/// 创建主窗口（无原生标题栏，参考 zapmomo 的分平台处理）。
+/// 创建主窗口（标题栏分平台处理：Windows 用系统原生，其余平台自定义头部）。
 ///
 /// - macOS：透明标题栏 + 隐藏标题文字，保留系统红绿灯；标题栏区域由系统原生承担拖拽，
 ///   窗口背景设为白色与 loading 页一致（跳转到 dsh 页面后该区域仍可拖动，无需注入）。
-/// - Windows：去掉系统标题栏；同时关 DWM shadow（undecorated+shadow 在 Win10 会被
-///   DWM 画成左右底三边黑框），loading 页用 CSS 自绘边框。
-/// - Linux：去掉系统标题栏。
-/// - 三平台注入 titlebar.js：macOS 只启用下载 toast；非 macOS 的 dsh web 页面
-///   （127.0.0.1 随机端口，DOM 不受本仓库控制）另由注入脚本绘制拖拽条与窗口三键：
+/// - Windows：保留系统原生标题栏（默认 decorations），拖拽/三键/边缘 resize/snap
+///   全部交给系统；仅启用注入脚本的下载 toast。
+/// - Linux：去掉系统标题栏并注入标记脚本，拖拽条与窗口三键由 titlebar.js 绘制：
+///   窗口就绪后跳转到 dsh web 页面（127.0.0.1 随机端口），其 DOM 不受本仓库控制，
 ///   标题栏透明融入页面（无背景无边框，三键颜色随页面深浅主题自适应），并给页面 html
-///   注入等高 padding 让顶部内容完整下移、不被遮挡；IPC 授权见 capabilities/remote-dsh.json
-///   （URL 模式需带 :* 端口通配）。
+///   注入等高 padding 让顶部内容完整下移、不被遮挡；IPC 授权见
+///   capabilities/remote-dsh.json（URL 模式需带 :* 端口通配）。
+/// - 三平台注入 titlebar.js：下载 toast 全平台需要；自定义标题栏部分仅在该 Linux
+///   标记存在时启用（脚本内判定，避免 Windows 原生标题栏上再叠一层）。
 fn build_main_window(app: &tauri::App) -> tauri::Result<()> {
     let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
         .title("DSHWork")
@@ -99,19 +100,17 @@ fn build_main_window(app: &tauri::App) -> tauri::Result<()> {
             .title_bar_style(TitleBarStyle::Transparent)
             .hidden_title(true);
     }
-    #[cfg(target_os = "windows")]
-    {
-        builder = builder.decorations(false).shadow(false);
-    }
     #[cfg(target_os = "linux")]
     {
-        builder = builder.decorations(false);
+        builder = builder
+            .decorations(false)
+            // 标记脚本先于 titlebar.js 注入（initialization_script 按注册顺序执行）：
+            // titlebar.js 三平台注入（下载 toast 需要），自定义标题栏部分仅在该
+            // 标记存在时启用，避免 Windows 原生标题栏上再叠一层
+            .initialization_script("window.__DSH_LINUX_TITLEBAR__ = true;");
     }
-    // titlebar.js 三平台都注入：脚本内部分流——macOS 只启用下载 toast（标题栏由
-    // 系统红绿灯承担），非 macOS 另绘制拖拽条与三键
-    {
-        builder = builder.initialization_script(include_str!("titlebar.js"));
-    }
+    // 三平台注入 titlebar.js：下载 toast 全平台生效，标题栏绘制由上面的标记分流
+    builder = builder.initialization_script(include_str!("titlebar.js"));
 
     // 下载处理：不注册则 macOS/Linux 完全无法下载（wry 不接管），注册后三平台
     // 统一落系统下载目录，完成后由 titlebar.js 弹 toast（详见 download.rs）。

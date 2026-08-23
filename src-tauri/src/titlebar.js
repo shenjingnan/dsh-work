@@ -1,12 +1,13 @@
-// 注入脚本（后端以 initialization_script 注入到所有页面），含两部分：
+// 注入脚本（后端以 initialization_script 注入到所有平台），含两部分：
 // - 下载完成 toast（三平台 dsh 页面）：下载结束后由后端广播 download-finished 事件，
 //   这里弹右下角 toast 反馈（注册下载处理器后 Windows 失去 WebView2 自带下载气泡，
 //   macOS/Linux 本无任何下载反馈，事件流见 src/download.rs）。
-// - 自定义标题栏（仅非 macOS 的 dsh 页面）：Windows/Linux 已去掉系统标题栏
-//   （decorations: false），窗口就绪后会跳转到 dsh web 页面（http://127.0.0.1:PORT），
-//   该页面由 dsh 服务提供、DOM 不受本仓库控制，因此补一层顶部拖拽条 + 窗口三键
-//   （参考 zapmomo 的 WindowControls）。本地 loading 页（tauri origin）自带标题栏控件，
-//   跳过避免重复；macOS 由系统红绿灯承担，双保险再判一次 UA。
+// - 自定义标题栏（仅 Linux 的 dsh 页面）：Linux 已去掉系统标题栏（decorations: false），
+//   窗口就绪后会跳转到 dsh web 页面（http://127.0.0.1:PORT），该页面由 dsh 服务提供、
+//   DOM 不受本仓库控制，因此补一层顶部拖拽条 + 窗口三键（参考 zapmomo 的
+//   WindowControls）；启用与否由后端 Linux 分支注入的 __DSH_LINUX_TITLEBAR__ 标记决定
+//   （Windows 用系统原生标题栏，macOS 用系统红绿灯 + 透明标题栏）。本地 loading 页
+//   （tauri origin）自带标题栏控件，跳过避免重复。
 //
 // 融合设计（不遮挡、无分界线）：
 // - 标题栏本身透明无背景无边框，直接浮在页面之上；窗口三键颜色随页面主题
@@ -20,8 +21,9 @@
   // 本地 loading 页：tauri://localhost（macOS/Linux WebKit）或 http://tauri.localhost（Windows）
   var isTauriLoadingPage =
     location.protocol === 'tauri:' || location.hostname === 'tauri.localhost';
-  // macOS：标题栏由系统红绿灯 + 透明标题栏承担，只参与下载 toast 部分
-  var isMac = navigator.userAgent.includes('Macintosh');
+  // 自定义标题栏仅 Linux：由后端 Linux 分支注入的标记控制（见 main.rs），
+  // 不用 UA 判定，避免在恢复原生标题栏的 Windows 上再叠一层
+  var useCustomTitlebar = !!window.__DSH_LINUX_TITLEBAR__;
 
   var BAR_HEIGHT = 32;
   var BAR_ID = 'dsh-work-titlebar';
@@ -212,6 +214,6 @@
 
   // 下载 toast：三平台的 dsh 页面都要（loading 页无下载场景，跳过）
   if (!isTauriLoadingPage) whenReady(setupDownloadToast);
-  // 标题栏：仅非 macOS 的 dsh 页面
-  if (!isTauriLoadingPage && !isMac) whenReady(setup);
+  // 标题栏：仅 Linux 的 dsh 页面（后端注入的标记决定）
+  if (useCustomTitlebar && !isTauriLoadingPage) whenReady(setup);
 })();

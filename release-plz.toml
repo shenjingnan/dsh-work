@@ -10,3 +10,16 @@ git_tag_enable = true
 git_tag_name = "v{{ version }}"
 changelog_update = true
 changelog_path = "CHANGELOG.md"
+
+[[package]]
+name = "dsh-work-app"
+# 桌面应用不发布到 crates.io（Cargo.toml 里 publish = false），而 release-plz
+# 默认跳过这类 crate，导致只改 src-tauri 的提交（fix/feat(desktop)）永远无法
+# 触发 release PR，桌面修复滞留无法发版（如 #32/#34/#35）。
+# 显式 release = true 让它参与版本判定；workspace 共享版本随之 bump，
+# tag / GitHub Release 仍由上面的 dsh-work 包统一负责。
+release = true
+publish = false
+git_tag_enable = false
+git_release_enable = false
+changelog_update = false
