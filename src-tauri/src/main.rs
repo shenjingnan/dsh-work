@@ -4,12 +4,13 @@
 
 mod process;
 mod runtime;
+mod seed;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
 
 use process::{DshHandle, DshStatus};
-use runtime::RuntimePaths;
+use runtime::{RuntimePaths, RuntimeSource};
 use serde::Serialize;
 #[cfg(target_os = "macos")]
 use tauri::TitleBarStyle;
@@ -147,6 +148,18 @@ fn main() {
             );
 
             let dsh_home = runtime::dsh_home();
+            // 首启种子化内置插件市场（仅安装包内置运行时的场景；开发回退模式无种子，
+            // try_seed 返回 Ok(false) 自然跳过）。失败仅告警：dsh 会自行 initProfile，
+            // 应用无插件市场但主链路不受影响。
+            if runtime.source == RuntimeSource::Bundled {
+                match seed::try_seed(&resource_dir, &dsh_home) {
+                    Ok(true) => tracing::info!("已种子化内置插件市场（profiles/web）"),
+                    Ok(false) => {}
+                    Err(e) => {
+                        tracing::warn!("插件市场种子化失败，降级为 dsh 自动初始化: {e:#}")
+                    }
+                }
+            }
             let handle = DshHandle::spawn(&runtime, &dsh_home).map_err(|e| {
                 tracing::error!("dsh 拉起失败: {e}");
                 e
