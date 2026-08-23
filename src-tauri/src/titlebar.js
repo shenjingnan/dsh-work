@@ -1,10 +1,13 @@
-// Linux 平台的自定义标题栏注入脚本（后端以 initialization_script 注入，仅在 Linux 生效；
-// Windows 用系统原生标题栏，macOS 用系统红绿灯 + 透明标题栏，均无需注入）。
-//
-// 背景：Linux 已去掉系统标题栏（decorations: false），窗口就绪后会跳转到
-// dsh web 页面（http://127.0.0.1:PORT），该页面由 dsh 服务提供、DOM 不受本仓库控制，
-// 因此通过本脚本为这类外部页面补一层顶部拖拽条 + 窗口三键（参考 zapmomo 的 WindowControls）。
-// 本地 loading 页（tauri origin）自带标题栏控件，这里跳过避免重复。
+// 注入脚本（后端以 initialization_script 注入到所有平台），含两部分：
+// - 下载完成 toast（三平台 dsh 页面）：下载结束后由后端广播 download-finished 事件，
+//   这里弹右下角 toast 反馈（注册下载处理器后 Windows 失去 WebView2 自带下载气泡，
+//   macOS/Linux 本无任何下载反馈，事件流见 src/download.rs）。
+// - 自定义标题栏（仅 Linux 的 dsh 页面）：Linux 已去掉系统标题栏（decorations: false），
+//   窗口就绪后会跳转到 dsh web 页面（http://127.0.0.1:PORT），该页面由 dsh 服务提供、
+//   DOM 不受本仓库控制，因此补一层顶部拖拽条 + 窗口三键（参考 zapmomo 的
+//   WindowControls）；启用与否由后端 Linux 分支注入的 __DSH_LINUX_TITLEBAR__ 标记决定
+//   （Windows 用系统原生标题栏，macOS 用系统红绿灯 + 透明标题栏）。本地 loading 页
+//   （tauri origin）自带标题栏控件，跳过避免重复。
 //
 // 融合设计（不遮挡、无分界线）：
 // - 标题栏本身透明无背景无边框，直接浮在页面之上；窗口三键颜色随页面主题
@@ -15,8 +18,12 @@
 (function () {
   'use strict';
 
-  // 本地 loading 页：tauri://localhost（macOS/Linux WebKit）
-  if (location.protocol === 'tauri:') return;
+  // 本地 loading 页：tauri://localhost（macOS/Linux WebKit）或 http://tauri.localhost（Windows）
+  var isTauriLoadingPage =
+    location.protocol === 'tauri:' || location.hostname === 'tauri.localhost';
+  // 自定义标题栏仅 Linux：由后端 Linux 分支注入的标记控制（见 main.rs），
+  // 不用 UA 判定，避免在恢复原生标题栏的 Windows 上再叠一层
+  var useCustomTitlebar = !!window.__DSH_LINUX_TITLEBAR__;
 
   var BAR_HEIGHT = 32;
   var BAR_ID = 'dsh-work-titlebar';
@@ -115,9 +122,98 @@
     document.body.appendChild(bar);
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setup);
-  } else {
-    setup();
+  // ===== 下载完成 toast（三平台 dsh 页面） =====
+  // 后端 on_download 结束后广播 download-finished（载荷 {filename, success}）；
+  // “打开文件夹”按钮经 open-downloads-dir 事件由后端打开系统下载目录。
+  // 事件授权见 capabilities/remote-dsh.json 的 core:event:default。
+  var TOAST_CONTAINER_ID = 'dsh-work-toast-container';
+  var TOAST_STYLE_ID = 'dsh-work-toast-style';
+
+  function ensureToastStyle() {
+    if (document.getElementById(TOAST_STYLE_ID)) return;
+    var s = document.createElement('style');
+    s.id = TOAST_STYLE_ID;
+    s.textContent =
+      '#' + TOAST_CONTAINER_ID + '{position:fixed;right:16px;bottom:16px;z-index:2147483647;' +
+      'display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.4;}' +
+      '#' + TOAST_CONTAINER_ID + ' .toast{display:flex;align-items:center;gap:8px;max-width:360px;' +
+      'padding:10px 14px;border-radius:8px;background:#fff;color:#202124;' +
+      'box-shadow:0 4px 16px rgba(0,0,0,.16);opacity:0;transition:opacity .2s;}' +
+      '#' + TOAST_CONTAINER_ID + ' .toast.show{opacity:1;}' +
+      '#' + TOAST_CONTAINER_ID + ' .toast .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
+      '#' + TOAST_CONTAINER_ID + ' .toast.ok .mark{color:#1e8e3e;}' +
+      '#' + TOAST_CONTAINER_ID + ' .toast.fail .mark{color:#d93025;}' +
+      '#' + TOAST_CONTAINER_ID + ' .toast button{flex:none;border:none;background:transparent;' +
+      'color:#1a73e8;cursor:pointer;padding:0;font-size:13px;}' +
+      '#' + TOAST_CONTAINER_ID + ' .toast button:hover{text-decoration:underline;}' +
+      'body[data-ds-dark-theme] #' + TOAST_CONTAINER_ID + ' .toast{background:#292a2d;color:#e8eaed;' +
+      'box-shadow:0 4px 16px rgba(0,0,0,.5);}';
+    document.head.appendChild(s);
   }
+
+  function showDownloadToast(filename, success) {
+    if (!document.body) return;
+    ensureToastStyle();
+    var container = document.getElementById(TOAST_CONTAINER_ID);
+    if (!container) {
+      container = document.createElement('div');
+      container.id = TOAST_CONTAINER_ID;
+      document.body.appendChild(container);
+    }
+
+    var toast = document.createElement('div');
+    toast.className = success ? 'toast ok' : 'toast fail';
+
+    var mark = document.createElement('span');
+    mark.className = 'mark';
+    mark.textContent = success ? '✓' : '✗';
+
+    var name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = (success ? '已下载 ' : '下载失败 ') + filename;
+    name.title = filename; // 长文件名省略号截断，悬停看全名
+
+    toast.appendChild(mark);
+    toast.appendChild(name);
+    if (success) {
+      var open = document.createElement('button');
+      open.type = 'button';
+      open.textContent = '打开文件夹';
+      open.addEventListener('click', function () {
+        var ev = window.__TAURI__ && window.__TAURI__.event;
+        if (ev) ev.emit('open-downloads-dir');
+      });
+      toast.appendChild(open);
+    }
+
+    container.appendChild(toast);
+    // 下一帧再挂 .show 触发淡入；6s 后淡出移除
+    requestAnimationFrame(function () { toast.classList.add('show'); });
+    setTimeout(function () {
+      toast.classList.remove('show');
+      setTimeout(function () { toast.remove(); }, 250);
+    }, 6000);
+  }
+
+  function setupDownloadToast() {
+    var ev = window.__TAURI__ && window.__TAURI__.event;
+    if (!ev || !ev.listen) return;
+    ev.listen('download-finished', function (e) {
+      var p = e && e.payload;
+      showDownloadToast(String((p && p.filename) || ''), !!(p && p.success));
+    });
+  }
+
+  function whenReady(fn) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', fn);
+    } else {
+      fn();
+    }
+  }
+
+  // 下载 toast：三平台的 dsh 页面都要（loading 页无下载场景，跳过）
+  if (!isTauriLoadingPage) whenReady(setupDownloadToast);
+  // 标题栏：仅 Linux 的 dsh 页面（后端注入的标记决定）
+  if (useCustomTitlebar && !isTauriLoadingPage) whenReady(setup);
 })();

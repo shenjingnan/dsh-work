@@ -2,6 +2,7 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod download;
 mod process;
 mod runtime;
 
@@ -13,7 +14,7 @@ use runtime::RuntimePaths;
 use serde::Serialize;
 #[cfg(target_os = "macos")]
 use tauri::TitleBarStyle;
-use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
+use tauri::{Listener, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
 
 /// dsh 进程句柄的共享容器（应用状态与信号处理器共用）。
 type SharedDsh = Arc<Mutex<Option<DshHandle>>>;
@@ -78,15 +79,15 @@ fn restart_server(state: tauri::State<'_, AppState>) -> Result<(), String> {
 /// - macOS：透明标题栏 + 隐藏标题文字，保留系统红绿灯；标题栏区域由系统原生承担拖拽，
 ///   窗口背景设为白色与 loading 页一致（跳转到 dsh 页面后该区域仍可拖动，无需注入）。
 /// - Windows：保留系统原生标题栏（默认 decorations），拖拽/三键/边缘 resize/snap
-///   全部交给系统，无需注入脚本。
-/// - Linux：去掉系统标题栏并注入 titlebar.js。窗口就绪后跳转到 dsh web 页面
-///   （127.0.0.1 随机端口），其 DOM 不受本仓库控制，拖拽条与窗口三键由注入脚本绘制：
+///   全部交给系统；仅启用注入脚本的下载 toast。
+/// - Linux：去掉系统标题栏并注入标记脚本，拖拽条与窗口三键由 titlebar.js 绘制：
+///   窗口就绪后跳转到 dsh web 页面（127.0.0.1 随机端口），其 DOM 不受本仓库控制，
 ///   标题栏透明融入页面（无背景无边框，三键颜色随页面深浅主题自适应），并给页面 html
 ///   注入等高 padding 让顶部内容完整下移、不被遮挡；IPC 授权见
 ///   capabilities/remote-dsh.json（URL 模式需带 :* 端口通配）。
+/// - 三平台注入 titlebar.js：下载 toast 全平台需要；自定义标题栏部分仅在该 Linux
+///   标记存在时启用（脚本内判定，避免 Windows 原生标题栏上再叠一层）。
 fn build_main_window(app: &tauri::App) -> tauri::Result<()> {
-    // Windows 走默认配置（原生标题栏），下方无 cfg 分支再赋值，mut 仅 macOS/Linux 使用
-    #[cfg_attr(target_os = "windows", allow(unused_mut))]
     let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
         .title("DSHWork")
         .inner_size(1280.0, 800.0)
@@ -103,8 +104,20 @@ fn build_main_window(app: &tauri::App) -> tauri::Result<()> {
     {
         builder = builder
             .decorations(false)
-            .initialization_script(include_str!("titlebar.js"));
+            // 标记脚本先于 titlebar.js 注入（initialization_script 按注册顺序执行）：
+            // titlebar.js 三平台注入（下载 toast 需要），自定义标题栏部分仅在该
+            // 标记存在时启用，避免 Windows 原生标题栏上再叠一层
+            .initialization_script("window.__DSH_LINUX_TITLEBAR__ = true;");
     }
+    // 三平台注入 titlebar.js：下载 toast 全平台生效，标题栏绘制由上面的标记分流
+    builder = builder.initialization_script(include_str!("titlebar.js"));
+
+    // 下载处理：不注册则 macOS/Linux 完全无法下载（wry 不接管），注册后三平台
+    // 统一落系统下载目录，完成后由 titlebar.js 弹 toast（详见 download.rs）。
+    builder = builder.on_download({
+        let names = Arc::new(download::DownloadNames::default());
+        move |webview, event| download::on_download(&names, &webview, event)
+    });
 
     builder.build()?;
     Ok(())
@@ -128,6 +141,11 @@ fn main() {
         }))
         .setup(|app| {
             build_main_window(app)?;
+            // toast 的“打开文件夹”按钮经事件触发（remote 页面调应用自有命令会被 ACL 拒绝）
+            let opener_handle = app.handle().clone();
+            app.listen_any(download::EVENT_OPEN_DOWNLOADS_DIR, move |_| {
+                download::open_downloads_dir(&opener_handle);
+            });
             let resource_dir = app
                 .path()
                 .resource_dir()
