@@ -1,6 +1,7 @@
-// 非 macOS 平台的自定义标题栏注入脚本（后端以 initialization_script 注入，仅在 Windows/Linux 生效）。
+// Linux 平台的自定义标题栏注入脚本（后端以 initialization_script 注入，仅在 Linux 生效；
+// Windows 用系统原生标题栏，macOS 用系统红绿灯 + 透明标题栏，均无需注入）。
 //
-// 背景：Windows/Linux 已去掉系统标题栏（decorations: false），窗口就绪后会跳转到
+// 背景：Linux 已去掉系统标题栏（decorations: false），窗口就绪后会跳转到
 // dsh web 页面（http://127.0.0.1:PORT），该页面由 dsh 服务提供、DOM 不受本仓库控制，
 // 因此通过本脚本为这类外部页面补一层顶部拖拽条 + 窗口三键（参考 zapmomo 的 WindowControls）。
 // 本地 loading 页（tauri origin）自带标题栏控件，这里跳过避免重复。
@@ -14,10 +15,8 @@
 (function () {
   'use strict';
 
-  // 本地 loading 页：tauri://localhost（macOS/Linux WebKit）或 http://tauri.localhost（Windows）
-  if (location.protocol === 'tauri:' || location.hostname === 'tauri.localhost') return;
-  // 双保险：macOS 由系统红绿灯 + 透明标题栏承担，后端本就不会在 macOS 注入本脚本
-  if (navigator.userAgent.includes('Macintosh')) return;
+  // 本地 loading 页：tauri://localhost（macOS/Linux WebKit）
+  if (location.protocol === 'tauri:') return;
 
   var BAR_HEIGHT = 32;
   var BAR_ID = 'dsh-work-titlebar';

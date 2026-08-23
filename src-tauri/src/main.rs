@@ -73,18 +73,20 @@ fn restart_server(state: tauri::State<'_, AppState>) -> Result<(), String> {
     Ok(())
 }
 
-/// 创建主窗口（无原生标题栏，参考 zapmomo 的分平台处理）。
+/// 创建主窗口（标题栏分平台处理：Windows 用系统原生，其余平台自定义头部）。
 ///
 /// - macOS：透明标题栏 + 隐藏标题文字，保留系统红绿灯；标题栏区域由系统原生承担拖拽，
 ///   窗口背景设为白色与 loading 页一致（跳转到 dsh 页面后该区域仍可拖动，无需注入）。
-/// - Windows：去掉系统标题栏；同时关 DWM shadow（undecorated+shadow 在 Win10 会被
-///   DWM 画成左右底三边黑框），loading 页用 CSS 自绘边框。
-/// - Linux：去掉系统标题栏。
-/// - 非 macOS：注入 titlebar.js。窗口就绪后跳转到 dsh web 页面（127.0.0.1 随机端口），其 DOM
-///   不受本仓库控制，拖拽条与窗口三键由注入脚本绘制：标题栏透明融入页面（无背景无边框，
-///   三键颜色随页面深浅主题自适应），并给页面 html 注入等高 padding 让顶部内容完整下移、
-///   不被遮挡；IPC 授权见 capabilities/remote-dsh.json（URL 模式需带 :* 端口通配）。
+/// - Windows：保留系统原生标题栏（默认 decorations），拖拽/三键/边缘 resize/snap
+///   全部交给系统，无需注入脚本。
+/// - Linux：去掉系统标题栏并注入 titlebar.js。窗口就绪后跳转到 dsh web 页面
+///   （127.0.0.1 随机端口），其 DOM 不受本仓库控制，拖拽条与窗口三键由注入脚本绘制：
+///   标题栏透明融入页面（无背景无边框，三键颜色随页面深浅主题自适应），并给页面 html
+///   注入等高 padding 让顶部内容完整下移、不被遮挡；IPC 授权见
+///   capabilities/remote-dsh.json（URL 模式需带 :* 端口通配）。
 fn build_main_window(app: &tauri::App) -> tauri::Result<()> {
+    // Windows 走默认配置（原生标题栏），下方无 cfg 分支再赋值，mut 仅 macOS/Linux 使用
+    #[cfg_attr(target_os = "windows", allow(unused_mut))]
     let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
         .title("DSHWork")
         .inner_size(1280.0, 800.0)
@@ -97,17 +99,11 @@ fn build_main_window(app: &tauri::App) -> tauri::Result<()> {
             .title_bar_style(TitleBarStyle::Transparent)
             .hidden_title(true);
     }
-    #[cfg(target_os = "windows")]
-    {
-        builder = builder.decorations(false).shadow(false);
-    }
     #[cfg(target_os = "linux")]
     {
-        builder = builder.decorations(false);
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        builder = builder.initialization_script(include_str!("titlebar.js"));
+        builder = builder
+            .decorations(false)
+            .initialization_script(include_str!("titlebar.js"));
     }
 
     builder.build()?;
