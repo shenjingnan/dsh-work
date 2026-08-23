@@ -52,10 +52,17 @@ else
 fi
 
 # --- pnpm（单文件分发，经内置 node 执行；仅首次下载一次，各 triple 通用） ---
-if [[ ! -f "$RESOURCES_PNPM/pnpm.cjs" ]]; then
+# dist/worker.js 必须随 pnpm.cjs 一起分发：pnpm 10.3x 把 resolve/fetch 放在
+# worker 线程执行，worker 脚本按 __dirname 相对解析（pnpm.cjs 内
+# workerScriptPath = join(__dirname, "worker.js")）。缺失时 add 表现为静默
+# 无操作（added 0、不写 package.json、exit 0）或 "Worker pnpm#1 exited with
+# code 1"，曾导致内置 pnpm 完全无法安装插件。dist/pnpmrc 是内置默认配置，一并随行。
+if [[ ! -f "$RESOURCES_PNPM/pnpm.cjs" || ! -f "$RESOURCES_PNPM/worker.js" ]]; then
   curl -fSL "https://registry.npmjs.org/pnpm/-/pnpm-$PNPM_VERSION.tgz" -o "$TMP/pnpm.tgz"
-  tar -xzf "$TMP/pnpm.tgz" -C "$TMP" package/dist/pnpm.cjs
-  cp "$TMP/package/dist/pnpm.cjs" "$RESOURCES_PNPM/pnpm.cjs"
+  tar -xzf "$TMP/pnpm.tgz" -C "$TMP" \
+    package/dist/pnpm.cjs package/dist/worker.js package/dist/pnpmrc
+  cp "$TMP/package/dist/pnpm.cjs" "$TMP/package/dist/worker.js" "$TMP/package/dist/pnpmrc" \
+    "$RESOURCES_PNPM/"
 
   # unix shim：dsh 以 spawnSync("pnpm") 调用，需要 PATH 上有可执行的 pnpm
   cat > "$RESOURCES_PNPM/pnpm" <<'SHIM'
