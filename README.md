@@ -33,6 +33,7 @@
 <summary>✨ 特性一览</summary>
 
 - **开箱即用** — 安装包内置 Node.js 运行时与 dsh，用户无需安装任何依赖
+- **内置插件市场** — 首次启动即带 [dshmarket](https://github.com/dsh-market/dsh-market) 插件市场，可在 dsh Web UI 中浏览、搜索并一键安装 [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) 收录的社区插件（安装插件需联网）
 - **桌面应用形态** — 基于 Tauri 2，单窗口内嵌 dsh Web UI，支持 macOS / Windows / Linux
 - **本地优先** — dsh 服务在本机回环地址运行，数据不出设备
 - **自定义标题栏** — 无边框窗口，分平台实现自定义头部
@@ -85,3 +86,16 @@
 ## 许可
 
 [MIT](LICENSE)
+
+### 内置第三方组件
+
+为做到开箱即用，安装包内随行了以下第三方组件（版本锁定见对应文件，随应用一起分发）：
+
+| 组件 | 许可 | 版本锁定 | 用途 |
+| --- | --- | --- | --- |
+| [Node.js](https://nodejs.org/) | [MIT](https://github.com/nodejs/node/blob/main/LICENSE) | `scripts/fetch-runtime.sh` | 内置 JS 运行时 |
+| [pnpm](https://pnpm.io/) | [MIT](https://github.com/pnpm/pnpm/blob/main/LICENSE) | `scripts/fetch-runtime.sh` | dsh 插件安装器 |
+| [@deepseek-ai/dsh](https://github.com/deepseek-ai/deepseek-harness) | [MIT](https://github.com/deepseek-ai/deepseek-harness/blob/master/LICENSE) | [`dsh-version.txt`](dsh-version.txt) | DeepSeek Harness 本体 |
+| [dshmarket](https://github.com/dsh-market/dsh-market) | [MIT](https://github.com/dsh-market/dsh-market/blob/main/LICENSE) | [`plugins-version.txt`](plugins-version.txt) | 插件市场（社区维护） |
+
+> ⚠️ 插件市场与其中收录的插件均由社区开发维护（awesome-dsh-plugin 收录不等于安全审查），安装插件即在其运行环境中执行第三方代码，请自行评估信任风险。

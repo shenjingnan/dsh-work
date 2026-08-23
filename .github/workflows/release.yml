@@ -115,6 +115,20 @@ jobs:
         shell: bash
         run: ./scripts/fetch-dsh.sh
 
+      - name: Cache plugin market seed
+        # dshmarket 种子由内置 dsh 跑出（dsh plugin = pnpm 转发器），纯网络下载；
+        # 内容由插件版本 + dsh 版本 + 脚本逻辑共同决定，三者任一变化即失效。
+        # 按 OS 分缓存线（对齐 bundled dsh 缓存），macOS 双 target 共线。
+        uses: actions/cache@v6
+        with:
+          path: src-tauri/resources/profile-seed
+          key: plugins-${{ runner.os }}-${{ hashFiles('plugins-version.txt', 'dsh-version.txt', 'scripts/fetch-plugins.sh') }}
+
+      - name: Fetch plugin market seed
+        # 必须在 fetch-dsh.sh 之后：依赖 resources/dsh 的 dsh 入口与 PATH 上的 pnpm
+        shell: bash
+        run: ./scripts/fetch-plugins.sh
+
       - name: Cache Node runtime and pnpm
         # Node 官方二进制（~40-80MB）按 triple 各一份；NODE_VERSION/PNPM_VERSION
         # 硬编码在 fetch-runtime.sh 内，脚本内容变化即产生新 key，随版本升级失效。

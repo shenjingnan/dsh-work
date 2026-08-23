@@ -5,12 +5,13 @@
 mod download;
 mod process;
 mod runtime;
+mod seed;
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
 
 use process::{DshHandle, DshStatus};
-use runtime::RuntimePaths;
+use runtime::{RuntimePaths, RuntimeSource};
 use serde::Serialize;
 #[cfg(target_os = "macos")]
 use tauri::TitleBarStyle;
@@ -29,13 +30,15 @@ struct AppState {
     dsh_home: PathBuf,
 }
 
-/// 前端轮询的响应：三态（就绪 / 失败 / 启动中）。
+/// 前端轮询的响应：四态（就绪 / 重启等待 / 失败 / 启动中）。
 #[derive(Serialize)]
 struct ServerUrlResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     error: Option<String>,
+    /// 服务曾就绪后死亡，正在等待插件市场自重启的替代进程接管原端口。
+    restarting: bool,
 }
 
 impl ServerUrlResponse {
@@ -43,6 +46,7 @@ impl ServerUrlResponse {
         Self {
             url: None,
             error: None,
+            restarting: false,
         }
     }
 }
@@ -54,10 +58,17 @@ fn server_url(state: tauri::State<'_, AppState>) -> ServerUrlResponse {
         Some(DshStatus::Ready(url)) => ServerUrlResponse {
             url: Some(url),
             error: None,
+            restarting: false,
+        },
+        Some(DshStatus::Restarting(_)) => ServerUrlResponse {
+            url: None,
+            error: None,
+            restarting: true,
         },
         Some(DshStatus::Failed(error)) => ServerUrlResponse {
             url: None,
             error: Some(error),
+            restarting: false,
         },
         _ => ServerUrlResponse::pending(),
     }
@@ -70,8 +81,34 @@ fn restart_server(state: tauri::State<'_, AppState>) -> Result<(), String> {
         old.kill();
     }
     let handle = DshHandle::spawn(&state.runtime, &state.dsh_home).map_err(|e| e.to_string())?;
+    write_server_port(&state.dsh_home, handle.port());
     *guard = Some(handle);
     Ok(())
+}
+
+/// 记录本次 dsh web 固定端口的文件（DSH_HOME 下的应用私有标记）。
+fn server_port_file(dsh_home: &std::path::Path) -> std::path::PathBuf {
+    dsh_home.join(".dsh-work-server-port")
+}
+
+/// 持久化端口：应用被强杀（kill -9）无法清理自重启替代进程时，下次启动凭此清理。
+fn write_server_port(dsh_home: &std::path::Path, port: u16) {
+    if let Err(e) = std::fs::write(server_port_file(dsh_home), port.to_string()) {
+        tracing::warn!("记录服务端口失败（不影响运行）: {e}");
+    }
+}
+
+/// 清理上次运行残留的替代进程：应用退出路径（窗口关闭/SIGTERM）会随 DshHandle
+/// 清理端口，但强杀场景只能等下次启动时按记录的端口补杀。
+fn clean_stale_server(dsh_home: &std::path::Path) {
+    let file = server_port_file(dsh_home);
+    if let Ok(text) = std::fs::read_to_string(&file)
+        && let Ok(port) = text.trim().parse::<u16>()
+    {
+        tracing::info!("清理上次运行可能残留的服务端口 {port}");
+        process::kill_port_owner(port);
+    }
+    let _ = std::fs::remove_file(&file);
 }
 
 /// 创建主窗口（标题栏分平台处理：Windows 用系统原生，其余平台自定义头部）。
@@ -161,10 +198,25 @@ fn main() {
             );
 
             let dsh_home = runtime::dsh_home();
+            // 清理上次强杀可能残留的自重启替代进程（按记录端口补杀）
+            clean_stale_server(&dsh_home);
+            // 首启种子化内置插件市场（仅安装包内置运行时的场景；开发回退模式无种子，
+            // try_seed 返回 Ok(false) 自然跳过）。失败仅告警：dsh 会自行 initProfile，
+            // 应用无插件市场但主链路不受影响。
+            if runtime.source == RuntimeSource::Bundled {
+                match seed::try_seed(&resource_dir, &dsh_home) {
+                    Ok(true) => tracing::info!("已种子化内置插件市场（profiles/web）"),
+                    Ok(false) => {}
+                    Err(e) => {
+                        tracing::warn!("插件市场种子化失败，降级为 dsh 自动初始化: {e:#}")
+                    }
+                }
+            }
             let handle = DshHandle::spawn(&runtime, &dsh_home).map_err(|e| {
                 tracing::error!("dsh 拉起失败: {e}");
                 e
             })?;
+            write_server_port(&dsh_home, handle.port());
             let dsh: SharedDsh = Arc::new(Mutex::new(Some(handle)));
             // SIGTERM/SIGINT 不走 Tauri 事件循环，单独注册处理器保证子进程被清理
             let _ = EXIT_HOOK.set(Arc::clone(&dsh));

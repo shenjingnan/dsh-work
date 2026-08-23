@@ -14,8 +14,9 @@
 
 1. **内置 dsh** — `scripts/fetch-dsh.sh` 按 `dsh-version.txt` 锁定的版本把 `@deepseek-ai/dsh` 预装到 `src-tauri/resources/dsh`，作为 Tauri resources 进入安装包
 2. **内置运行时** — `scripts/fetch-runtime.sh` 按平台拉取 Node.js 二进制（sidecar）与 pnpm 打入安装包
-3. **启动流程** — 应用拉起内置 Node 运行 `dsh web`（监听回环地址端口），等待服务就绪后在单窗口中加载本地 Web UI
-4. **生命周期** — 关闭窗口或收到 SIGTERM/SIGINT 时自动清理 dsh 子进程
+3. **内置插件市场** — `scripts/fetch-plugins.sh` 按 `plugins-version.txt` 锁定的版本用 dsh 官方链路（`dsh plugin add`）生成含 `dshmarket` 的 profile 种子（`src-tauri/resources/profile-seed`）；应用首次启动时种子化到用户 `DSH_HOME`，开箱即有插件市场（详见 `docs/plans/2026-08-23-plugin-market-seed.md`）
+4. **启动流程** — 应用拉起内置 Node 运行 `dsh web`（监听回环地址端口），等待服务就绪后在单窗口中加载本地 Web UI
+5. **生命周期** — 关闭窗口或收到 SIGTERM/SIGINT 时自动清理 dsh 子进程
 
 ## 本地开发
 
@@ -28,6 +29,7 @@ cargo fmt --check && cargo clippy -- -D warnings && cargo test   # 完整检查�
 # 桌面应用
 ./scripts/fetch-dsh.sh                # 拉取内置 dsh
 ./scripts/fetch-runtime.sh <triple>   # 拉取 Node 运行时 + pnpm（如 aarch64-apple-darwin）
+./scripts/fetch-plugins.sh            # 生成插件市场种子（需 PATH 上有 node + pnpm）
 cargo tauri dev                       # 启动桌面应用（需已安装 tauri-cli）
 ```
 
@@ -36,6 +38,7 @@ cargo tauri dev                       # 启动桌面应用（需已安装 tauri-
 ```
 ├── Cargo.toml            # Workspace + CLI crate
 ├── dsh-version.txt       # 内置 dsh 版本锁定
+├── plugins-version.txt   # 内置插件市场（dshmarket）版本锁定
 ├── src/                  # CLI（clap + tokio）
 │   ├── main.rs           # 入口文件
 │   ├── cli.rs            # CLI 命令定义
@@ -43,11 +46,11 @@ cargo tauri dev                       # 启动桌面应用（需已安装 tauri-
 │   ├── logging.rs        # tracing 双层日志
 │   └── datetime.rs       # 日期时间工具
 ├── src-tauri/            # Tauri 2 桌面应用
-│   ├── src/              # 应用入口、dsh 进程与运行时管理
+│   ├── src/              # 应用入口、dsh 进程与运行时管理、首启种子化
 │   ├── frontend/         # 加载页（轮询等待 dsh 服务就绪）
-│   ├── resources/        # 内置 dsh + pnpm（由 scripts 拉取）
+│   ├── resources/        # 内置 dsh + pnpm + 插件市场种子（由 scripts 拉取）
 │   └── binaries/         # 内置 Node.js 运行时（sidecar）
-├── scripts/              # fetch-dsh.sh / fetch-runtime.sh
+├── scripts/              # fetch-dsh.sh / fetch-runtime.sh / fetch-plugins.sh
 ├── tests/                # CLI 集成测试
 ├── .github/workflows/    # CI / release-plz / cargo-dist + tauri-action
 └── .githooks/            # Git hooks

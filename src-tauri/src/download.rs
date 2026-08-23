@@ -139,10 +139,10 @@ mod tests {
     #[test]
     fn record_then_take_returns_filename() {
         let names = DownloadNames::default();
-        names.record(
-            "http://127.0.0.1:1/api/export/a.zip",
-            Path::new(r"C:\Users\u\Downloads\a.zip"),
-        );
+        // 路径须按当前平台构造：硬编码 Windows 分隔符时，Unix 的 Path::file_name
+        // 会把整串当作单个组件（反斜杠不是分隔符），断言随之平台相关而失败
+        let saved = std::env::temp_dir().join("a.zip");
+        names.record("http://127.0.0.1:1/api/export/a.zip", &saved);
         assert_eq!(
             names.take("http://127.0.0.1:1/api/export/a.zip").as_deref(),
             Some("a.zip")

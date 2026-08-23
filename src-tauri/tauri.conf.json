@@ -17,7 +17,8 @@
     "externalBin": ["binaries/node"],
     "resources": {
       "resources/dsh": "dsh/",
-      "resources/pnpm": "pnpm/"
+      "resources/pnpm": "pnpm/",
+      "resources/profile-seed": "profile-seed/"
     },
     "macOS": {
       "minimumSystemVersion": "13.0",

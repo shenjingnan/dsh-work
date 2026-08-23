@@ -108,7 +108,8 @@
       }
     }
 
-    // 阶段 2 接线：轮询 server_url，就绪后跳转；失败显示错误页
+    // 阶段 2 接线：轮询 server_url，就绪后跳转；失败显示错误页；
+    // 重启等待（插件市场自重启的替代进程接管端口中）显示提示并继续轮询
     function showError(detail) {
       loadingEl.classList.add('hidden');
       statusEl.classList.add('hidden');
@@ -132,6 +133,9 @@
           showError(result.error);
           return;
         }
+        statusEl.textContent = result.restarting
+          ? '插件变更生效中，正在等待服务恢复…'
+          : '正在启动 DeepSeek Harness…';
         setTimeout(poll, 500);
       } catch (e) {
         showError(String(e));
