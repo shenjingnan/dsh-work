@@ -2,6 +2,7 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod download;
 mod process;
 mod runtime;
 
@@ -13,7 +14,7 @@ use runtime::RuntimePaths;
 use serde::Serialize;
 #[cfg(target_os = "macos")]
 use tauri::TitleBarStyle;
-use tauri::{Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
+use tauri::{Listener, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
 
 /// dsh 进程句柄的共享容器（应用状态与信号处理器共用）。
 type SharedDsh = Arc<Mutex<Option<DshHandle>>>;
@@ -80,10 +81,11 @@ fn restart_server(state: tauri::State<'_, AppState>) -> Result<(), String> {
 /// - Windows：去掉系统标题栏；同时关 DWM shadow（undecorated+shadow 在 Win10 会被
 ///   DWM 画成左右底三边黑框），loading 页用 CSS 自绘边框。
 /// - Linux：去掉系统标题栏。
-/// - 非 macOS：注入 titlebar.js。窗口就绪后跳转到 dsh web 页面（127.0.0.1 随机端口），其 DOM
-///   不受本仓库控制，拖拽条与窗口三键由注入脚本绘制：标题栏透明融入页面（无背景无边框，
-///   三键颜色随页面深浅主题自适应），并给页面 html 注入等高 padding 让顶部内容完整下移、
-///   不被遮挡；IPC 授权见 capabilities/remote-dsh.json（URL 模式需带 :* 端口通配）。
+/// - 三平台注入 titlebar.js：macOS 只启用下载 toast；非 macOS 的 dsh web 页面
+///   （127.0.0.1 随机端口，DOM 不受本仓库控制）另由注入脚本绘制拖拽条与窗口三键：
+///   标题栏透明融入页面（无背景无边框，三键颜色随页面深浅主题自适应），并给页面 html
+///   注入等高 padding 让顶部内容完整下移、不被遮挡；IPC 授权见 capabilities/remote-dsh.json
+///   （URL 模式需带 :* 端口通配）。
 fn build_main_window(app: &tauri::App) -> tauri::Result<()> {
     let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
         .title("DSHWork")
@@ -105,10 +107,18 @@ fn build_main_window(app: &tauri::App) -> tauri::Result<()> {
     {
         builder = builder.decorations(false);
     }
-    #[cfg(not(target_os = "macos"))]
+    // titlebar.js 三平台都注入：脚本内部分流——macOS 只启用下载 toast（标题栏由
+    // 系统红绿灯承担），非 macOS 另绘制拖拽条与三键
     {
         builder = builder.initialization_script(include_str!("titlebar.js"));
     }
+
+    // 下载处理：不注册则 macOS/Linux 完全无法下载（wry 不接管），注册后三平台
+    // 统一落系统下载目录，完成后由 titlebar.js 弹 toast（详见 download.rs）。
+    builder = builder.on_download({
+        let names = Arc::new(download::DownloadNames::default());
+        move |webview, event| download::on_download(&names, &webview, event)
+    });
 
     builder.build()?;
     Ok(())
@@ -132,6 +142,11 @@ fn main() {
         }))
         .setup(|app| {
             build_main_window(app)?;
+            // toast 的“打开文件夹”按钮经事件触发（remote 页面调应用自有命令会被 ACL 拒绝）
+            let opener_handle = app.handle().clone();
+            app.listen_any(download::EVENT_OPEN_DOWNLOADS_DIR, move |_| {
+                download::open_downloads_dir(&opener_handle);
+            });
             let resource_dir = app
                 .path()
                 .resource_dir()

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "remote-dsh-window-controls",
-  "description": "窗口跳转到的 dsh web 页面（本地回环地址）允许使用窗口拖拽与三键，供注入的自定义标题栏调用。dsh web 以 --port 0 启动、端口随机，URL 模式必须带 :* 端口通配（URLPattern 中不带端口的模式只匹配协议默认端口，曾导致拖拽与三键 IPC 全部被拒）",
+  "description": "窗口跳转到的 dsh web 页面（本地回环地址）允许使用窗口拖拽与三键（注入的自定义标题栏调用），以及下载完成 toast 的事件收发（core:event）。dsh web 以 --port 0 启动、端口随机，URL 模式必须带 :* 端口通配（URLPattern 中不带端口的模式只匹配协议默认端口，曾导致拖拽与三键 IPC 全部被拒）",
   "local": false,
   "remote": {
     "urls": ["http://127.0.0.1:*", "http://localhost:*"]
@@ -11,6 +11,7 @@
     "core:window:allow-start-dragging",
     "core:window:allow-minimize",
     "core:window:allow-toggle-maximize",
-    "core:window:allow-close"
+    "core:window:allow-close",
+    "core:event:default"
   ]
 }
