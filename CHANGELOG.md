@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.7](https://github.com/shenjingnan/dsh-work/compare/v0.1.6...v0.1.7) - 2026-08-23
+
+### Fixed
+
+- *(release)* 让 release-plz 纳入桌面 crate，修复桌面改动无法触发发版 ([#37](https://github.com/shenjingnan/dsh-work/pull/37))
+
 ## [0.1.6](https://github.com/shenjingnan/dsh-work/compare/v0.1.5...v0.1.6) - 2026-08-22
 
 ### Fixed
