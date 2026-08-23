@@ -949,7 +949,7 @@ dependencies = [
 
 [[package]]
 name = "dsh-work"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "anyhow",
  "chrono",
@@ -967,7 +967,7 @@ dependencies = [
 
 [[package]]
 name = "dsh-work-app"
-version = "0.1.6"
+version = "0.1.7"
 dependencies = [
  "anyhow",
  "ctrlc",
