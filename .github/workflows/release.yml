@@ -60,7 +60,7 @@ jobs:
           version: 10.34.5
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@1.97.1
+        uses: dtolnay/rust-toolchain@1.100.0
 
       - name: Verify tag matches crate versions
         # 版本漂移守卫：tag 必须与两个 crate 解析出的版本一致（workspace 共享
